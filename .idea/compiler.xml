@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.projectlombok/lombok/1.18.46/a5cfe99fdf320e84955ef653f2ce1bf789d11385/lombok-1.18.46.jar" />
+        </processorPath>
+        <module name="application-service.main" />
+        <module name="application-service.test" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="application-service" target="25" />
+      <module name="application-service.main" target="25" />
+      <module name="application-service.test" target="25" />
+      <module name="deployment-service" target="25" />
+      <module name="deployment-service.main" target="25" />
+      <module name="deployment-service.test" target="25" />
+      <module name="deployment-worker" target="25" />
+      <module name="deployment-worker.main" target="25" />
+      <module name="deployment-worker.test" target="25" />
+      <module name="gateway" target="25" />
+      <module name="gateway.main" target="25" />
+      <module name="gateway.test" target="25" />
+      <module name="git-service" target="25" />
+      <module name="git-service.main" target="25" />
+      <module name="git-service.test" target="25" />
+      <module name="project-service" target="25" />
+      <module name="project-service.main" target="25" />
+      <module name="project-service.test" target="25" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="application-service" options="-parameters" />
+      <module name="application-service.main" options="-parameters" />
+      <module name="application-service.test" options="-parameters" />
+      <module name="deployment-service" options="-parameters" />
+      <module name="deployment-service.main" options="-parameters" />
+      <module name="deployment-service.test" options="-parameters" />
+      <module name="deployment-worker" options="-parameters" />
+      <module name="deployment-worker.main" options="-parameters" />
+      <module name="deployment-worker.test" options="-parameters" />
+      <module name="gateway" options="-parameters" />
+      <module name="gateway.main" options="-parameters" />
+      <module name="gateway.test" options="-parameters" />
+      <module name="git-service" options="-parameters" />
+      <module name="git-service.main" options="-parameters" />
+      <module name="git-service.test" options="-parameters" />
+      <module name="project-service" options="-parameters" />
+      <module name="project-service.main" options="-parameters" />
+      <module name="project-service.test" options="-parameters" />
+    </option>
+  </component>
+</project>

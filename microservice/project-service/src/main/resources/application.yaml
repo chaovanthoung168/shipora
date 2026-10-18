@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: project-service
+
+  datasource:
+    url: "jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:${POSTGRES_DB}}?currentSchema=project"
+    username: ${DB_USER:${POSTGRES_USER}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD}}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.default_schema: project
+
+  flyway:
+    enabled: true
+    default-schema: project
+    schemas: project
+
+server:
+  port: ${SERVER_PORT:8081}

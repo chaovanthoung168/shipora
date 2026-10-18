@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: io.netty:netty-codec-native-quic:windows-x86_64:4.2.17.Final" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="io.netty" artifactId="netty-codec-native-quic" version="4.2.17.Final" baseVersion="4.2.17.Final" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec-native-quic/4.2.17.Final/3b92055f779d7cf5214fce7c0cc3ce12a8d53f5c/netty-codec-native-quic-4.2.17.Final-windows-x86_64.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec-native-quic/4.2.17.Final/6658171e37b774f413cbe1cb3948b7d5d0788e4e/netty-codec-native-quic-4.2.17.Final-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

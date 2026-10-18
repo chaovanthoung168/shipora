@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: io.projectreactor:reactor-core:3.8.7" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="io.projectreactor" artifactId="reactor-core" version="3.8.7" baseVersion="3.8.7" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.projectreactor/reactor-core/3.8.7/cf54bb43d59d6bb9b3ba5c160c975d4a18f351ab/reactor-core-3.8.7.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/io.projectreactor/reactor-core/3.8.7/92aa965b7939861abe724bc0dfff3e2feed1cd8d/reactor-core-3.8.7-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

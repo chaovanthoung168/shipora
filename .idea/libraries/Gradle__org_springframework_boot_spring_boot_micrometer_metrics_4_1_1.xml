@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.springframework.boot:spring-boot-micrometer-metrics:4.1.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.springframework.boot" artifactId="spring-boot-micrometer-metrics" version="4.1.1" baseVersion="4.1.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-micrometer-metrics/4.1.1/d2fa58fe517a9aefcf99a725b63331151fe63c40/spring-boot-micrometer-metrics-4.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-micrometer-metrics/4.1.1/e875a34fe28563c59d0534b939de842b36ad005f/spring-boot-micrometer-metrics-4.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

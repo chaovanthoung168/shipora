@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.springframework.boot:spring-boot-security-test:4.1.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.springframework.boot" artifactId="spring-boot-security-test" version="4.1.1" baseVersion="4.1.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-security-test/4.1.1/a373ed22e35a2c73e9e343805b570869bb66fb0f/spring-boot-security-test-4.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-security-test/4.1.1/fd1d37e55e2607d1d49dd94a6382b1f5a740a974/spring-boot-security-test-4.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

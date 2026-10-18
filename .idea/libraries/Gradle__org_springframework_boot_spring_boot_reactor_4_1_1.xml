@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.springframework.boot:spring-boot-reactor:4.1.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.springframework.boot" artifactId="spring-boot-reactor" version="4.1.1" baseVersion="4.1.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-reactor/4.1.1/b40bdd0288a8eac2f728d2fd07c044be6eff30c2/spring-boot-reactor-4.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-reactor/4.1.1/7f0eaa8b4f755dcb7dbe5e7b754f65a0460961e0/spring-boot-reactor-4.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.springframework.boot:spring-boot-restclient:4.1.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.springframework.boot" artifactId="spring-boot-restclient" version="4.1.1" baseVersion="4.1.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-restclient/4.1.1/2580bc1fe99c2fa90dcb94cb734c6b2b114fdf17/spring-boot-restclient-4.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-restclient/4.1.1/2911cdf2d7913a5d2ada9177b1336cf51bc7c5f8/spring-boot-restclient-4.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

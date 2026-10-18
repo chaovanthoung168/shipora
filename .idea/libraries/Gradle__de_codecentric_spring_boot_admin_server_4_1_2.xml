@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: de.codecentric:spring-boot-admin-server:4.1.2" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="de.codecentric" artifactId="spring-boot-admin-server" version="4.1.2" baseVersion="4.1.2" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/de.codecentric/spring-boot-admin-server/4.1.2/bb57241c931838fb68abfd8aa90df0d504d609be/spring-boot-admin-server-4.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/de.codecentric/spring-boot-admin-server/4.1.2/251f40c9b0a7e9d244807e22fc9b02003deef21c/spring-boot-admin-server-4.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

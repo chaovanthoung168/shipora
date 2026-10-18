@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.springframework.boot:spring-boot-netty:4.1.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.springframework.boot" artifactId="spring-boot-netty" version="4.1.1" baseVersion="4.1.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-netty/4.1.1/1865c5b85196ea87fe20722530a921e1376335b4/spring-boot-netty-4.1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.springframework.boot/spring-boot-netty/4.1.1/47ffc8b0b22d5005c5ab8e6e6cab92585aab85b7/spring-boot-netty-4.1.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: org.thymeleaf:thymeleaf-spring6:3.1.5.RELEASE" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.thymeleaf" artifactId="thymeleaf-spring6" version="3.1.5.RELEASE" baseVersion="3.1.5.RELEASE" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.thymeleaf/thymeleaf-spring6/3.1.5.RELEASE/d9dcb89be976a321df29518cc634d89a83973800/thymeleaf-spring6-3.1.5.RELEASE.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.thymeleaf/thymeleaf-spring6/3.1.5.RELEASE/5c82aa0c8b2d9e506d1e5c0c65cbe2b896816471/thymeleaf-spring6-3.1.5.RELEASE-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
