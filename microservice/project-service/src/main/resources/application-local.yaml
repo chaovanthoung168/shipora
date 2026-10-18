@@ -6,3 +6,14 @@ shipora:
     username: developer
     password: qwer
     organization-id: "11111111-1111-1111-1111-111111111111"
+  ssh:
+    targets:
+      - organization-id: "11111111-1111-1111-1111-111111111111"
+        credential-secret-ref: "ssh/unity-workspace"
+        host: "10.1.18.4"
+        port: 22
+        username: "root"
+        host-key-algorithm: "ssh-ed25519"
+        host-key-fingerprint: "SHA256:BqEQX70okhPJpl1lPIpMtMTENOTKIuBgAG6bMp/tGqQ"
+        private-key: "${SHIPORA_SSH_PRIVATE_KEY:${user.home}/.ssh/unity-workspace}"
+        passphrase-environment-variable: "SHIPORA_SSH_KEY_PASSPHRASE"

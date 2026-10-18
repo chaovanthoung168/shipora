@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.hierynomus:asn-one:0.6.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.hierynomus" artifactId="asn-one" version="0.6.0" baseVersion="0.6.0" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.hierynomus/asn-one/0.6.0/7f6141541e0a4d3ae0b02c901c2c1e9a772eb3d7/asn-one-0.6.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.hierynomus/asn-one/0.6.0/22985c1b531117d5d4af28bffb01bce18e0b3f17/asn-one-0.6.0-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

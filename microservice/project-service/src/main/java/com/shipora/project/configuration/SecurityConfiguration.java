@@ -1,9 +1,12 @@
 package com.shipora.project.configuration;
 
+import jakarta.servlet.DispatcherType;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpMethod;
 
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -38,6 +41,8 @@ public class SecurityConfiguration {
                 .password(passwordEncoder.encode(password))
                 .authorities(
                         "ROLE_PROJECT_ACCESS",
+                        "ROLE_SERVER_ACCESS",
+                        "ROLE_SERVER_CONNECT",
                         "ORG_" + organizationId
                 )
                 .build();
@@ -57,11 +62,20 @@ public class SecurityConfiguration {
                         )
                 )
                 .authorizeHttpRequests(authorize -> authorize
+                        .dispatcherTypeMatchers(DispatcherType.ERROR)
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/servers/*/connection-checks")
+                        .hasRole("SERVER_CONNECT")
                         .requestMatchers(
                                 "/api/projects",
                                 "/api/projects/**"
                         )
                         .hasRole("PROJECT_ACCESS")
+                        .requestMatchers(
+                                "/api/servers",
+                                "/api/servers/**"
+                        )
+                        .hasRole("SERVER_ACCESS")
                         .anyRequest()
                         .denyAll()
                 )

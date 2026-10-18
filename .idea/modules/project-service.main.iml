@@ -20,6 +20,7 @@
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-webmvc:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: de.codecentric:spring-boot-admin-starter-server:4.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.flywaydb:flyway-database-postgresql:12.4.0" level="project" />
+    <orderEntry type="library" name="Gradle: com.hierynomus:sshj:0.41.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-jdbc:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-data-jpa:4.1.1" level="project" />
@@ -154,7 +155,11 @@
     <orderEntry type="library" name="Gradle: org.attoparser:attoparser:2.0.7.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.unbescape:unbescape:1.1.6.RELEASE" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.postgresql:postgresql:42.7.13" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: org.bouncycastle:bcprov-jdk18on:1.84" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: org.bouncycastle:bcpkix-jdk18on:1.84" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: com.hierynomus:asn-one:0.6.0" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.checkerframework:checker-qual:3.55.1" level="project" />
+    <orderEntry type="library" scope="RUNTIME" name="Gradle: org.bouncycastle:bcutil-jdk18on:1.84" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: org.hibernate.models:hibernate-models:1.1.1" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: net.bytebuddy:byte-buddy:1.18.11" level="project" />
     <orderEntry type="library" scope="RUNTIME" name="Gradle: jakarta.xml.bind:jakarta.xml.bind-api:4.0.5" level="project" />

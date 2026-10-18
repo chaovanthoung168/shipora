@@ -1,0 +1,214 @@
+{
+  "info": {
+    "name": "Shipora - Server Registration and Inventory",
+    "description": "Manual development tests. Set password and verified server values locally before sending. No real credentials included.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "developer",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "host",
+      "value": "10.1.18.4",
+      "type": "string"
+    },
+    {
+      "key": "credentialSecretRef",
+      "value": "ssh/unity-workspace",
+      "type": "string"
+    },
+    {
+      "key": "verifiedFingerprint",
+      "value": "SHA256:BqEQX70okhPJpl1lPIpMtMTENOTKIuBgAG6bMp/tGqQ",
+      "type": "string"
+    },
+    {
+      "key": "serverId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1 - Register server",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/servers",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n  \"name\": \"api-gateway1\",\r\n  \"host\": \"{{host}}\",\r\n  \"sshPort\": 22,\r\n  \"sshUsername\": \"root\",\r\n  \"credentialSecretRef\": \"{{credentialSecretRef}}\",\r\n  \"sshHostKeyFingerprint\": \"{{verifiedFingerprint}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Created\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  pm.collectionVariables.set(\"serverId\", body.id);",
+              "  pm.test(\"Initially OFFLINE\", () => pm.expect(body.status).to.eql(\"OFFLINE\"));",
+              "  pm.test(\"Credential reference omitted\", () => pm.expect(body).not.to.have.property(\"credentialSecretRef\"));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 - Get registered server",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/servers/{{serverId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Found\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 - List servers",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/servers?page=0&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Listed\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) pm.test(\"Array response\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 - Check SSH connection",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/servers/{{serverId}}/connection-checks"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Check completed\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) {",
+              "  const result = pm.response.json();",
+              "  pm.test(\"SSH authenticated\", () => pm.expect(result.code).to.eql(\"CONNECTED\"));",
+              "  pm.test(\"Server active\", () => pm.expect(result.status).to.eql(\"ACTIVE\"));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5 - Invalid request",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/servers",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"\",\n  \"host\": \"server.example.com\",\n  \"sshPort\": 70000\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Rejected\", () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6 - Missing credentials",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/servers",
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Unauthorized\", () => pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

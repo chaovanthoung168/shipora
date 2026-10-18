@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="Gradle: com.hierynomus:sshj:0.41.1" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="com.hierynomus" artifactId="sshj" version="0.41.1" baseVersion="0.41.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.hierynomus/sshj/0.41.1/2628174e3c3b89ecadc56bc0e30e96465fc09573/sshj-0.41.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.hierynomus/sshj/0.41.1/2c0724f4d232e549d23428929f7cfec10a8b3472/sshj-0.41.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
