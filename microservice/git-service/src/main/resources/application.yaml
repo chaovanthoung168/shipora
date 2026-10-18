@@ -21,3 +21,22 @@ spring:
 
 server:
   port: ${SERVER_PORT:8084}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+shipora:
+  setup:
+    public-url: ${SHIPORA_PUBLIC_URL:http://localhost:8084}
+    manifest-callback-url: ${SHIPORA_GITHUB_SETUP_CALLBACK_URL:}
+    authorization-callback-url: ${SHIPORA_GITHUB_AUTH_CALLBACK_URL:}
+    data-directory: ${SHIPORA_DATA_DIR:./.shipora/git-service}
+    webhooks-enabled: ${SHIPORA_GITHUB_WEBHOOKS_ENABLED:false}
+  github:
+    app-id: ${GITHUB_APP_ID:}
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+    private-key: ${GITHUB_PRIVATE_KEY_PATH:}
+    callback-url: ${GITHUB_CALLBACK_URL:http://localhost:8084/api/git/github/callback}
+    webhook-secret: ${GITHUB_WEBHOOK_SECRET:}
+    api-version: "2026-03-10"

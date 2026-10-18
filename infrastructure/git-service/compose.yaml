@@ -1,0 +1,50 @@
+name: shipora-git
+services:
+  git-service:
+    image: ${SHIPORA_GIT_IMAGE:-shipora/git-service:local}
+    build:
+      context: ../../microservice/git-service
+    ports:
+      - "${SHIPORA_BIND_ADDRESS:-127.0.0.1}:${SHIPORA_PORT:-8084}:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: selfhost
+      DB_HOST: database
+      DB_PORT: "5432"
+      DB_NAME: shipora
+      DB_USER: shipora
+      DB_PASSWORD: ${SHIPORA_DB_PASSWORD:?Set SHIPORA_DB_PASSWORD}
+      SHIPORA_ADMIN_USERNAME: ${SHIPORA_ADMIN_USERNAME:-admin}
+      SHIPORA_ADMIN_PASSWORD: ${SHIPORA_ADMIN_PASSWORD:?Set SHIPORA_ADMIN_PASSWORD}
+      SHIPORA_PUBLIC_URL: ${SHIPORA_PUBLIC_URL:-http://localhost:8084}
+      SHIPORA_DATA_DIR: /var/lib/shipora
+      SHIPORA_GITHUB_WEBHOOKS_ENABLED: ${SHIPORA_GITHUB_WEBHOOKS_ENABLED:-false}
+      SHIPORA_GITHUB_SETUP_CALLBACK_URL: ${SHIPORA_GITHUB_SETUP_CALLBACK_URL:-}
+      SHIPORA_GITHUB_AUTH_CALLBACK_URL: ${SHIPORA_GITHUB_AUTH_CALLBACK_URL:-}
+    volumes:
+      - git-keys:/var/lib/shipora
+    tmpfs:
+      - /tmp
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: shipora
+      POSTGRES_USER: shipora
+      POSTGRES_PASSWORD: ${SHIPORA_DB_PASSWORD:?Set SHIPORA_DB_PASSWORD}
+    volumes:
+      - git-database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shipora -d shipora"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+volumes:
+  git-keys:
+  git-database:
