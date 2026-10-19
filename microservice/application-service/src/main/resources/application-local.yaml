@@ -1,0 +1,7 @@
+server:
+  address: 127.0.0.1
+shipora:
+  local:
+    username: ${LOCAL_API_USERNAME:developer}
+    password: ${LOCAL_API_PASSWORD:qwer}
+    organization-id: ${LOCAL_ORGANIZATION_ID:11111111-1111-1111-1111-111111111111}

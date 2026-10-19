@@ -21,3 +21,13 @@ spring:
 
 server:
   port: ${SERVER_PORT:8082}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+shipora:
+  catalog:
+    project-url: ${PROJECT_SERVICE_URL:http://localhost:8081}
+    git-url: ${GIT_SERVICE_URL:http://localhost:8084}
+  secrets:
+    data-directory: ${SHIPORA_APPLICATION_DATA_DIR:./.shipora/application-service}

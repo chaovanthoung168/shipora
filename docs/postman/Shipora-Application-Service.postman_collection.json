@@ -1,0 +1,491 @@
+{
+  "info": {
+    "name": "Shipora Application Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Configure baseUrl, username/password, organization-owned projectId/repositoryId/serverId. The repository must be synchronized/available and the server ACTIVE after its connection check. Project, Git and Application services must recognize the same caller identity/organization. Run requests 1-8 individually. Versions are saved automatically. Secrets remain write-only. Cleanup requests are explicit and optional. See docs/application-service.md."
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "developer",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "repositoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serverId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "version",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "secretValue",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create application",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/applications",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Set reference UUIDs first. Branch defaults to the repository default; other omitted settings use safe defaults. No deployment is triggered.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"repositoryId\": \"{{repositoryId}}\",\n  \"serverId\": \"{{serverId}}\",\n  \"name\": \"Shipora Web\",\n  \"slug\": \"shipora-web\",\n  \"containerPort\": 3000,\n  \"dockerfilePath\": \"Dockerfile\",\n  \"buildContext\": \".\",\n  \"healthPath\": \"/\",\n  \"autoDeploy\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version); if (data.id) pm.collectionVariables.set(\"applicationId\", data.id); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Get application",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+        "header": [],
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. List applications in project",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/applications?projectId={{projectId}}&page=0&size=20",
+        "header": [],
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Patch application",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Omitted or null fields keep their current values. Project is immutable. References are revalidated. Stale version returns 409.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"version\": {{version}},\n  \"name\": \"Shipora Web Updated\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Replace environment variables",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}/environment",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Replaces the complete non-secret variable map. Use secret endpoints for sensitive values. A key cannot also exist as a secret.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"version\": {{version}},\n  \"variables\": {\n    \"NODE_ENV\": \"production\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Write or rotate secret",
+      "request": {
+        "method": "PUT",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}/secrets/API_TOKEN",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "description": "Set secretValue locally. The backend encrypts the value; response only contains secret key names and the new application version.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"version\": {{version}},\n  \"value\": \"{{secretValue}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. List secret keys",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}/secrets",
+        "header": [],
+        "description": "Returns names only; no plaintext or ciphertext export API."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Get environment variables",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}/environment",
+        "header": [],
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Negative checks - run after creation",
+      "item": [
+        {
+          "name": "Missing patch version",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject build path traversal",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/applications",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"repositoryId\": \"{{repositoryId}}\",\n  \"serverId\": \"{{serverId}}\",\n  \"name\": \"Shipora Web\",\n  \"slug\": \"shipora-web\",\n  \"containerPort\": 3000,\n  \"dockerfilePath\": \"../Dockerfile\",\n  \"buildContext\": \".\",\n  \"healthPath\": \"/\",\n  \"autoDeploy\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stale application version",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 999999999999,\n  \"name\": \"Should not save\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing application",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications/00000000-0000-0000-0000-000000000000",
+            "header": [],
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing authentication",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/applications",
+            "header": [],
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cleanup - optional",
+      "item": [
+        {
+          "name": "Delete secret key",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}/secrets/API_TOKEN?version={{version}}",
+            "header": [],
+            "description": "Deletes the named secret and increments application version."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const data = pm.response.json(); if (typeof data.version === \"number\") pm.collectionVariables.set(\"version\", data.version);  }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete application configuration",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}?version={{version}}",
+            "header": [],
+            "description": "Soft-deletes the application and erases its environment/secrets/domain configuration. Does not stop a remote container or delete deployment history."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

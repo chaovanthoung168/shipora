@@ -12,6 +12,7 @@
     <orderEntry type="jdk" jdkName="25" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="application-service.main" />
+    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-jdbc:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-data-jpa:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-flyway:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-security:4.1.1" level="project" />
@@ -26,9 +27,9 @@
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-validation-test:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-webmvc-test:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter:4.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-jdbc:4.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-data-jpa:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-jdbc:4.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: com.zaxxer:HikariCP:7.0.2" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-data-jpa:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-flyway:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-security:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-aop:7.0.9" level="project" />
@@ -52,15 +53,15 @@
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-autoconfigure:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: jakarta.annotation:jakarta.annotation-api:3.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.yaml:snakeyaml:2.6" level="project" />
-    <orderEntry type="library" name="Gradle: com.zaxxer:HikariCP:7.0.2" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-data-commons:4.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-hibernate:4.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework.data:spring-data-jpa:4.1.1" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework:spring-aspects:7.0.9" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-sql:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-transaction:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-jdbc:7.0.9" level="project" />
+    <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:2.0.18" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-data-commons:4.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-hibernate:4.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework.data:spring-data-jpa:4.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework:spring-aspects:7.0.9" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.security:spring-security-config:7.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.security:spring-security-web:7.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-beans:7.0.9" level="project" />
@@ -100,14 +101,13 @@
     <orderEntry type="library" name="Gradle: ch.qos.logback:logback-classic:1.5.38" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.logging.log4j:log4j-to-slf4j:2.25.5" level="project" />
     <orderEntry type="library" name="Gradle: org.slf4j:jul-to-slf4j:2.0.18" level="project" />
-    <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:2.0.18" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework:spring-context:7.0.9" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-persistence:4.1.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.springframework:spring-tx:7.0.9" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.data:spring-data-commons:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-jpa:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.hibernate.orm:hibernate-core:7.4.5.Final" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-orm:7.0.9" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework:spring-context:7.0.9" level="project" />
-    <orderEntry type="library" name="Gradle: org.springframework:spring-tx:7.0.9" level="project" />
     <orderEntry type="library" name="Gradle: org.antlr:antlr4-runtime:4.13.2" level="project" />
     <orderEntry type="library" name="Gradle: org.aspectj:aspectjweaver:1.9.25.1" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.security:spring-security-core:7.1.1" level="project" />
