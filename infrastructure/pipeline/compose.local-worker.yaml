@@ -1,0 +1,38 @@
+# Attach a worker to APIs already running on the Docker Desktop host.
+# Prepare ignored configuration with scripts/Start-LocalWorker.ps1 first.
+services:
+  buildkit:
+    image: moby/buildkit:v0.34.0-rootless@sha256:65eca3c01cd1180c8f64565c4e3c5983af5145818b0e6fa863385d099eb73855
+    command: [--addr, unix:///run/user/1000/buildkit/buildkitd.sock, --oci-worker-snapshotter, native]
+    security_opt: [seccomp=unconfined, apparmor=unconfined, systempaths=unconfined]
+    volumes:
+      - buildkit-socket:/run/user/1000
+      - buildkit-cache:/home/user/.local/share/buildkit
+    restart: unless-stopped
+  deployment-worker:
+    image: shipora/deployment-worker:local
+    build:
+      context: ../..
+      dockerfile: infrastructure/pipeline/worker.Dockerfile
+    env_file: ../../.shipora/local-worker/worker.env
+    environment:
+      SHIPORA_WORKER_ENABLED: 'true'
+      PROJECT_SERVICE_URL: http://host.docker.internal:8081
+      APPLICATION_SERVICE_URL: http://host.docker.internal:8082
+      DEPLOYMENT_SERVICE_URL: http://host.docker.internal:8083
+      GIT_SERVICE_URL: http://host.docker.internal:8084
+      SHIPORA_WORKER_WORKSPACE: /var/lib/shipora/worker
+      BUILDKIT_HOST: unix:///run/buildkit/buildkit/buildkitd.sock
+      SPRING_CONFIG_ADDITIONAL_LOCATION: file:/run/shipora/worker.yaml
+    volumes:
+      - worker-data:/var/lib/shipora/worker
+      - buildkit-socket:/run/buildkit:ro
+      - ../../.shipora/local-worker/worker.yaml:/run/shipora/worker.yaml:ro
+      - ../../.shipora/local-worker/registry:/run/shipora/registry:ro
+      - ../../.shipora/local-worker/ssh:/run/shipora/ssh:ro
+    depends_on: [buildkit]
+    restart: unless-stopped
+volumes:
+  worker-data:
+  buildkit-socket:
+  buildkit-cache:

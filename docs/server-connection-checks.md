@@ -66,7 +66,8 @@ Each timeout is bounded between 100ms and 1m; concurrent checks are bounded
 between 1 and 8. There is no waiting queue. A check already running for the same
 server, or exhausted check capacity, returns 429 and does not overwrite status.
 Per-server exclusion and capacity are per service instance. Distributed job
-coordination belongs to a future worker/queue implementation.
+coordination is handled separately by Deployment Service and Deployment Worker;
+see [deployment-pipeline.md](deployment-pipeline.md).
 
 Completed checks return HTTP 200, even if the target cannot be authenticated.
 Inspect the result's `code` and `status`:

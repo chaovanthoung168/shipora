@@ -52,6 +52,14 @@ public final class GitService implements GitUseCases {
         requireInstallation(org, id);
         return store.repositories(org, id, offset, size).stream().map(RepositoryResult::from).toList();
     }
+    @Override public List<RepositoryResult> searchRepositories(UUID org, UUID id, String query, int page, int size) {
+        String term = query == null ? "" : query.strip();
+        if (term.length() > 200) throw new GitException(INVALID, "Repository search must be at most 200 characters.");
+        if (term.isEmpty()) return repositories(org, id, page, size);
+        int offset = offset(page, size);
+        requireInstallation(org, id);
+        return store.searchRepositories(org, id, term, offset, size).stream().map(RepositoryResult::from).toList();
+    }
     @Override public RepositoryResult repository(UUID org, UUID id) {
         return RepositoryResult.from(store.repository(org, id)
                 .orElseThrow(() -> new GitException(NOT_FOUND, "Repository not found.")));
@@ -63,6 +71,20 @@ public final class GitService implements GitUseCases {
         var snapshot = provider.repositories(installation.externalId());
         store.replaceRepositories(installation, snapshot, clock.instant());
         return snapshot.size();
+    }
+    @Override public List<CommitResult> commits(UUID org, UUID id, String branch, int page, int size) {
+        if (branch == null || !branch.matches("[A-Za-z0-9_][A-Za-z0-9_./-]{0,254}")
+                || branch.contains("..") || branch.contains("//") || branch.endsWith("/")) {
+            throw new GitException(INVALID, "A valid repository branch is required.");
+        }
+        if (page < 0 || page > 1000 || size < 1 || size > 100)
+            throw new GitException(INVALID, "Use page between 0 and 1000 and size between 1 and 100.");
+        var repository = store.repository(org, id)
+                .orElseThrow(() -> new GitException(NOT_FOUND, "Repository not found."));
+        var installation = requireInstallation(org, repository.installationId());
+        if (!repository.available() || !installation.active())
+            throw new GitException(CONFLICT, "Reconnect and synchronize this repository before loading commits.");
+        return provider.commits(installation.externalId(), repository.externalId(), repository.fullName(), branch, page, size);
     }
     private GitInstallation requireInstallation(UUID org, UUID id) {
         return store.installation(org, id).orElseThrow(() -> new GitException(NOT_FOUND, "Installation not found."));

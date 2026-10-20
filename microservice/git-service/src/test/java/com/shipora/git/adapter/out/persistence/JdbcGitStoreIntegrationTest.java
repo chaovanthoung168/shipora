@@ -34,7 +34,7 @@ class JdbcGitStoreIntegrationTest {
                 new ClassPathResource("db/migration/V2__git_connections_and_repository_access.sql"),
                 new ClassPathResource("db/migration/V3__browser_github_connections.sql"),
                 new ClassPathResource("db/migration/V4__api_connection_tokens.sql"),
-                new ClassPathResource("db/migration/V5__instance_github_app_setup.sql")).execute(source);
+                new ClassPathResource("db/migration/V5__instance_github_app_setup.sql"),new ClassPathResource("db/migration/V6__deployment_push_outbox.sql")).execute(source);
         store = new JdbcGitStore(jdbc, new DataSourceTransactionManager(source));
         connections = new JdbcConnectionStore(jdbc, new DataSourceTransactionManager(source));
         setup = new JdbcGitHubSetupStore(jdbc, new FileCredentialCipher(directory), new DataSourceTransactionManager(source));
@@ -87,6 +87,20 @@ class JdbcGitStoreIntegrationTest {
         var repository = store.repositories(org, installation.id(), 0, 20).getFirst(); UUID other = UUID.randomUUID();
         assertTrue(store.installation(other, installation.id()).isEmpty()); assertTrue(store.repository(other, repository.id()).isEmpty());
         assertTrue(store.repositories(other, installation.id(), 0, 20).isEmpty());
+    }
+    @Test void repositorySearchMatchesAcrossPagesLiterallyAndEnforcesOwnership() {
+        var installation = connect();
+        var snapshot = new ArrayList<GitProvider.RepositorySnapshot>();
+        for (int index = 0; index < 15; index++) snapshot.add(repo(String.valueOf(index)));
+        snapshot.add(new GitProvider.RepositorySnapshot("99", "owner/zz-StoreFront", "https://github.com/owner/zz-StoreFront.git", "main", true));
+        store.replaceRepositories(installation, snapshot, now);
+        assertEquals("owner/zz-StoreFront", store.searchRepositories(org, installation.id(), "storefront", 0, 10).getFirst().fullName());
+        assertEquals(1, store.searchRepositories(org, installation.id(), "OWNER/ZZ", 0, 10).size());
+        assertTrue(store.searchRepositories(org, installation.id(), "%", 0, 10).isEmpty());
+        assertTrue(store.searchRepositories(org, installation.id(), "_", 0, 10).isEmpty());
+        assertEquals(6, store.searchRepositories(org, installation.id(), "owner/", 10, 10).size());
+        assertTrue(store.searchRepositories(UUID.randomUUID(), installation.id(), "storefront", 0, 10).isEmpty());
+        assertTrue(store.searchRepositories(org, UUID.randomUUID(), "storefront", 0, 10).isEmpty());
     }
     @Test void synchronizationPreservesRepositoryIdsAndMarksMissingRepositoriesUnavailable() {
         var installation = connect(); store.replaceRepositories(installation, List.of(repo("1"), repo("2")), now);
@@ -182,6 +196,24 @@ class JdbcGitStoreIntegrationTest {
     }
     private GitProvider.RepositorySnapshot repo(String id) {
         return new GitProvider.RepositorySnapshot(id, "owner/repo" + id, "https://github.com/owner/repo" + id + ".git", "main", true);
+    }
+    @Test void signedBranchPushWritesTenantScopedOutboxInTheSameTransaction(){
+        var installation=connect();store.replaceRepositories(installation,List.of(repo("1")),now);
+        var repository=store.repositories(org,installation.id(),0,20).getFirst();String event=UUID.randomUUID().toString();
+        var push=new GitStore.WebhookDelivery(event,"push","123","1","a".repeat(40),false,false,"main");
+        assertTrue(store.recordWebhook(push,now));assertFalse(store.recordWebhook(push,now));
+        assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM git.deployment_push_outbox",Integer.class));
+        assertEquals(org,jdbc.queryForObject("SELECT organization_id FROM git.deployment_push_outbox",UUID.class));
+        assertEquals(repository.id(),jdbc.queryForObject("SELECT repository_id FROM git.deployment_push_outbox",UUID.class));
+    }
+    @Test void deletedTagsUnknownAndRevokedRepositoriesDoNotProducePushJobs(){
+        var installation=connect();store.replaceRepositories(installation,List.of(repo("1")),now);
+        store.recordWebhook(new GitStore.WebhookDelivery(UUID.randomUUID().toString(),"push","123","1","0".repeat(40),false,false,"main"),now);
+        store.recordWebhook(new GitStore.WebhookDelivery(UUID.randomUUID().toString(),"push","123","1","a".repeat(40),false,false,null),now);
+        store.recordWebhook(new GitStore.WebhookDelivery(UUID.randomUUID().toString(),"push","123","999","a".repeat(40),false,false,"main"),now);
+        store.recordWebhook(delivery(true,false),now);
+        store.recordWebhook(new GitStore.WebhookDelivery(UUID.randomUUID().toString(),"push","123","1","a".repeat(40),false,false,"main"),now);
+        assertEquals(0,jdbc.queryForObject("SELECT count(*) FROM git.deployment_push_outbox",Integer.class));
     }
     private GitStore.WebhookDelivery delivery(boolean disable, boolean repositories) {
         return new GitStore.WebhookDelivery(UUID.randomUUID().toString(), "installation", "123", null, null, disable, repositories);

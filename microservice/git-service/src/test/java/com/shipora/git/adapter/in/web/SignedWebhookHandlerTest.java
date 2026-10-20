@@ -68,4 +68,13 @@ class SignedWebhookHandlerTest {
         Mac mac = Mac.getInstance("HmacSHA256"); mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         return "sha256=" + HexFormat.of().formatHex(mac.doFinal(body));
     }
+    @Test void onlyLiveBranchPushesCarryAnAutomaticDeploymentBranch()throws Exception{
+        for(String ref:List.of("refs/heads/main","refs/tags/v1")){
+            reset(useCases);byte[] event=("{\"installation\":{\"id\":123},\"repository\":{\"id\":456},\"ref\":\""+ref+"\",\"after\":\""+"a".repeat(40)+"\",\"deleted\":false}").getBytes(StandardCharsets.UTF_8);
+            handler.handle(sign(event),delivery,"push",event);
+            verify(useCases).receive(argThat(value->ref.startsWith("refs/heads/")?"main".equals(value.branch()):value.branch()==null));
+        }
+        reset(useCases);byte[] deleted=("{\"ref\":\"refs/heads/main\",\"after\":\""+"0".repeat(40)+"\",\"deleted\":true}").getBytes(StandardCharsets.UTF_8);
+        handler.handle(sign(deleted),delivery,"push",deleted);verify(useCases).receive(argThat(value->value.branch()==null));
+    }
 }

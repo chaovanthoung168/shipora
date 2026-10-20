@@ -67,6 +67,14 @@ public class JdbcGitStore implements GitStore {
                 WHERE i.organization_id = ? AND i.id = ? ORDER BY r.full_name, r.id LIMIT ? OFFSET ?
                 """, this::repositoryRow, org, id, limit, offset);
     }
+    @Override public List<GitRepository> searchRepositories(UUID org, UUID id, String query, int offset, int limit) {
+        return jdbc.query("""
+                SELECT r.*, (r.available AND i.active) AS effective_available FROM git.repositories r
+                JOIN git.git_installations i ON i.id = r.installation_id
+                WHERE i.organization_id = ? AND i.id = ? AND strpos(lower(r.full_name), lower(?)) > 0
+                ORDER BY r.full_name, r.id LIMIT ? OFFSET ?
+                """, this::repositoryRow, org, id, query, limit, offset);
+    }
     @Override public Optional<GitRepository> repository(UUID org, UUID id) {
         return jdbc.query("""
                 SELECT r.*, (r.available AND i.active) AS effective_available FROM git.repositories r
@@ -111,6 +119,14 @@ public class JdbcGitStore implements GitStore {
                     """, UUID.randomUUID(), repositories.isEmpty() ? null : repositories.getFirst(), delivery.deliveryId(),
                     delivery.eventType(), delivery.commitSha(), Timestamp.from(now), Timestamp.from(now));
             if (inserted == 0) return false;
+            if("push".equals(delivery.eventType()) && delivery.branch()!=null && delivery.commitSha()!=null && !delivery.commitSha().matches("0+") && !repositories.isEmpty()){
+                jdbc.update("""
+                    INSERT INTO git.deployment_push_outbox(id,organization_id,repository_id,commit_sha,branch,created_at)
+                    SELECT ?,i.organization_id,r.id,?,?,? FROM git.repositories r JOIN git.git_installations i ON i.id=r.installation_id
+                    WHERE r.id=? AND r.available AND i.active
+                    ON CONFLICT (id) DO NOTHING
+                    """,UUID.fromString(delivery.deliveryId()),delivery.commitSha(),delivery.branch(),Timestamp.from(now),repositories.getFirst());
+            }
             if (installationId != null && (delivery.invalidateInstallation() || delivery.invalidateRepositories())) {
                 jdbc.update("UPDATE git.repositories SET available = false WHERE installation_id = ?", installationId);
                 jdbc.update("UPDATE git.git_installations SET revision = revision + 1, active = active AND ? WHERE id = ?",

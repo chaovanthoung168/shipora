@@ -1,0 +1,167 @@
+{
+  "info": {
+    "name": "Shipora Deployment Pipeline",
+    "_postman_id": "ce0decee-fa78-4cae-b0a9-096cb80f150e",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Real deployment workflow. Configure a running worker, registry, GitHub connection and runtime target first; see docs/deployment-pipeline.md. Push triggers require autoDeploy=true and a public signed GitHub webhook."
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "commitSha",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deploymentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Get application configuration",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}"
+      }
+    },
+    {
+      "name": "2. Create manual deployment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Job accepted', () => pm.response.to.have.status(202));",
+              "if (pm.response.code === 202) pm.collectionVariables.set('deploymentId', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Shipora-Request",
+            "value": "true"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "postman-{{$guid}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"applicationId\": \"{{applicationId}}\",\n  \"commitSha\": \"{{commitSha}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/deployments"
+      }
+    },
+    {
+      "name": "3. Get deployment status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/deployments/{{deploymentId}}"
+      }
+    },
+    {
+      "name": "4. Get lifecycle events",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/deployments/{{deploymentId}}/events"
+      }
+    },
+    {
+      "name": "5. List app deployments after git push",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/deployments?applicationId={{applicationId}}&size=20"
+      }
+    },
+    {
+      "name": "6. Get release and runtime endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}/releases"
+      }
+    },
+    {
+      "name": "7. Retry failed deployment",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 202) pm.collectionVariables.set('deploymentId', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "X-Shipora-Request",
+            "value": "true"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "postman-retry-{{$guid}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/deployments/{{deploymentId}}/retries"
+      }
+    }
+  ]
+}

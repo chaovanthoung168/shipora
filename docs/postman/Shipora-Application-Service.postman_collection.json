@@ -2,7 +2,7 @@
   "info": {
     "name": "Shipora Application Service",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Configure baseUrl, username/password, organization-owned projectId/repositoryId/serverId. The repository must be synchronized/available and the server ACTIVE after its connection check. Project, Git and Application services must recognize the same caller identity/organization. Run requests 1-8 individually. Versions are saved automatically. Secrets remain write-only. Cleanup requests are explicit and optional. See docs/application-service.md."
+    "description": "Configure baseUrl, username/password, organization-owned projectId/repositoryId/serverId. These requests use the default DOCKER runtime. For Kubernetes targets, import Shipora-Kubernetes-Targets.postman_collection.json and follow docs/kubernetes-targets.md. The repository must be synchronized/available and the server ACTIVE after its connection check. Project, Git and Application services must recognize the same caller identity/organization. Run requests 1-8 individually. Versions are saved automatically. Secrets remain write-only. Cleanup requests are explicit and optional. See docs/application-service.md."
   },
   "auth": {
     "type": "basic",

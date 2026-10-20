@@ -44,12 +44,17 @@ public final class SignedWebhookHandler {
             if (!repository.isEmpty() && !repository.matches("[1-9][0-9]{0,19}")) throw new IllegalArgumentException();
             String commit = "push".equals(event) ? payload.path("after").asText("") : "";
             if (!commit.isEmpty() && !commit.matches("[0-9a-f]{40}|[0-9a-f]{64}")) throw new IllegalArgumentException();
+            String ref=payload.path("ref").asText("");String branch=null;
+            if("push".equals(event) && ref.startsWith("refs/heads/") && !payload.path("deleted").asBoolean(false) && !commit.isBlank() && !commit.matches("0+")){
+                branch=ref.substring(11);
+                if(!branch.matches("[A-Za-z0-9_][A-Za-z0-9_./-]{0,254}") || branch.contains("..") || branch.contains("//") || branch.endsWith("/") || branch.endsWith("."))throw new IllegalArgumentException();
+            }
             // Fail closed on permission changes. Reconnect or sync explicitly after reviewing access.
             boolean disableInstallation = "installation".equals(event) && Set.of("deleted", "suspend", "new_permissions_accepted").contains(action);
             boolean disableRepositories = "installation_repositories".equals(event)
                     || ("repository".equals(event) && Set.of("deleted", "transferred", "privatized", "publicized", "renamed").contains(action));
             delivery = new WebhookDelivery(deliveryId, event, emptyNull(installation), emptyNull(repository),
-                    emptyNull(commit), disableInstallation, disableRepositories);
+                    emptyNull(commit), disableInstallation, disableRepositories,branch);
         } catch (GitException e) { throw e; }
         catch (Exception e) { throw new GitException(INVALID, "Invalid GitHub webhook payload or headers."); }
         return useCases.receive(delivery);

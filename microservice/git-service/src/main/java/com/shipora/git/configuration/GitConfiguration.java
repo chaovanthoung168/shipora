@@ -14,6 +14,7 @@ import org.springframework.context.annotation.*;
 import java.time.Clock;
 
 @Configuration
+@org.springframework.context.annotation.Import(com.shipora.pipeline.PipelineConfiguration.class)
 @EnableConfigurationProperties({GitHubProperties.class, GitSetupProperties.class})
 public class GitConfiguration {
     @Bean Clock clock() { return Clock.systemUTC(); }
@@ -32,6 +33,7 @@ public class GitConfiguration {
         return new GitHubSetupService(store, registration, manifest, source::status, clock);
     }
     @Bean GitUseCases gitUseCases(GitStore store, GitProvider provider, Clock clock) { return new GitService(store, provider, clock); }
+    @Bean com.shipora.git.application.service.WorkerSourceService workerSources(GitStore store,GitProvider provider){return new com.shipora.git.application.service.WorkerSourceService(store,provider);}
     @Bean GitConnectionUseCases gitConnectionUseCases(ConnectionStore connectionStore, GitStore store, GitProvider provider, Clock clock) {
         return new GitConnectionService(connectionStore, store, provider, clock);
     }

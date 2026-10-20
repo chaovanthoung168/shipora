@@ -9,7 +9,7 @@ import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes = {GitController.class, GitHubSetupController.class})
+@RestControllerAdvice(assignableTypes = {GitController.class, GitHubSetupController.class,PipelineController.class})
 public class GitExceptionHandler {
     @ExceptionHandler(GitException.class)
     public ResponseEntity<ProblemDetail> git(GitException exception) {

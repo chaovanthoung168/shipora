@@ -1,6 +1,84 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns:
+                  - "http://localhost:[*]"
+                  - "http://127.0.0.1:[*]"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
+                maxAge: 3600
+          routes:
+            # 1. Deployment service: releases endpoint takes precedence over general application routes
+            - id: deployment-service-releases
+              uri: ${DEPLOYMENT_SERVICE_URL:http://localhost:8083}
+              order: 1
+              predicates:
+                - Path=/api/applications/{id}/releases, /api/applications/{id}/releases/**
 
-server:
-  port: ${SERVER_PORT:8080}
+            # 2. Deployment service: deployments and events
+            - id: deployment-service-deployments
+              uri: ${DEPLOYMENT_SERVICE_URL:http://localhost:8083}
+              order: 2
+              predicates:
+                - Path=/api/deployments, /api/deployments/**
+
+            # 3. Application service: applications, environment, secrets
+            - id: application-service-applications
+              uri: ${APPLICATION_SERVICE_URL:http://localhost:8082}
+              order: 10
+              predicates:
+                - Path=/api/applications, /api/applications/**
+
+            # 4. Application service: kubernetes targets
+            - id: application-service-kubernetes-targets
+              uri: ${APPLICATION_SERVICE_URL:http://localhost:8082}
+              order: 11
+              predicates:
+                - Path=/api/kubernetes-targets, /api/kubernetes-targets/**
+
+            # 5. Project service: projects
+            - id: project-service-projects
+              uri: ${PROJECT_SERVICE_URL:http://localhost:8081}
+              order: 20
+              predicates:
+                - Path=/api/projects, /api/projects/**
+
+            # 6. Project service: servers and connection checks
+            - id: project-service-servers
+              uri: ${PROJECT_SERVICE_URL:http://localhost:8081}
+              order: 21
+              predicates:
+                - Path=/api/servers, /api/servers/**
+
+            # 7. Git service: GitHub integration, connections, installations, repositories, webhooks
+            - id: git-service-git
+              uri: ${GIT_SERVICE_URL:http://localhost:8084}
+              order: 30
+              predicates:
+                - Path=/api/git, /api/git/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    gateway:
+      enabled: true

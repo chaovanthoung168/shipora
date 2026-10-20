@@ -1,0 +1,9 @@
+server:
+  address: 0.0.0.0
+shipora:
+  local:
+    username: ${SHIPORA_ADMIN_USERNAME:admin}
+    password: ${SHIPORA_ADMIN_PASSWORD}
+    worker-username: ${LOCAL_WORKER_USERNAME:shipora-worker}
+    worker-password: ${LOCAL_WORKER_PASSWORD:}
+    organization-id: ${SHIPORA_ORGANIZATION_ID:11111111-1111-1111-1111-111111111111}

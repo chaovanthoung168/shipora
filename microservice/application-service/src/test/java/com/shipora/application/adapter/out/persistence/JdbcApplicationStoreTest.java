@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfEnvironmentVariable(named="APPLICATION_TEST_JDBC_URL",matches=".+")
 class JdbcApplicationStoreTest {
-    JdbcTemplate jdbc;JdbcApplicationStore store;
+    JdbcTemplate jdbc;JdbcApplicationStore store;JdbcKubernetesTargetStore targets;
     final UUID org=UUID.randomUUID(),project=UUID.randomUUID();
     final Instant now=Instant.parse("2026-10-18T00:00:00Z");
     @BeforeEach void setup(){
@@ -24,8 +24,10 @@ class JdbcApplicationStoreTest {
         var source=new DriverManagerDataSource(url,System.getenv().getOrDefault("APPLICATION_TEST_DB_USER","postgres"),System.getenv().getOrDefault("APPLICATION_TEST_DB_PASSWORD",""));
         jdbc=new JdbcTemplate(source);jdbc.execute("DROP SCHEMA IF EXISTS application CASCADE");jdbc.execute("CREATE SCHEMA application");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V1__create_application_tables.sql"),
-                new ClassPathResource("db/migration/V2__application_ownership_and_versioning.sql")).execute(source);
+                new ClassPathResource("db/migration/V2__application_ownership_and_versioning.sql"),
+                new ClassPathResource("db/migration/V3__kubernetes_targets.sql")).execute(source);
         store=new JdbcApplicationStore(jdbc,new DataSourceTransactionManager(source));
+        targets=new JdbcKubernetesTargetStore(jdbc,new DataSourceTransactionManager(source));
     }
     ManagedApplication app(String slug){return ManagedApplication.builder().id(UUID.randomUUID()).organizationId(org).projectId(project).repositoryId(UUID.randomUUID())
         .serverId(UUID.randomUUID()).name("Web").slug(slug).branch("main").dockerfilePath("Dockerfile").buildContext(".").containerPort(3000)
@@ -100,6 +102,80 @@ class JdbcApplicationStoreTest {
     @Test void newRowsWithoutAnOrganizationAreRejectedByDatabase(){
         assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->store.create(app("web").toBuilder().organizationId(null).build()));
     }
+    @Test void workerConfigurationIsVersionCheckedTenantScopedAndEncryptedAtTheStoreBoundary(){
+        var app=store.create(app("worker"));store.replaceEnvironment(org,app.getId(),0,Map.of("MODE","production"),now);
+        store.putSecret(org,app.getId(),1,"TOKEN",new SecretCipher.Encrypted("encrypted-value","v1"),now);
+        var context=store.workerConfiguration(org,app.getId(),2);assertEquals(Map.of("MODE","production"),context.environment());assertEquals("encrypted-value",context.secrets().get("TOKEN").ciphertext());
+        assertThrows(ApplicationException.class,()->store.workerConfiguration(org,app.getId(),1));assertThrows(ApplicationException.class,()->store.workerConfiguration(UUID.randomUUID(),app.getId(),2));
+        assertFalse(context.toString().contains("encrypted-value"));
+    }
+    @Test void automaticMatchingHonorsOrganizationRepositoryBranchAndOptIn(){
+        var candidate=store.create(app("auto").toBuilder().autoDeploy(true).build());store.create(app("manual"));
+        assertEquals(1,store.autoDeployApplications(org,candidate.getRepositoryId(),"main",0,100).size());
+        assertTrue(store.autoDeployApplications(org,candidate.getRepositoryId(),"develop",0,100).isEmpty());
+        assertTrue(store.autoDeployApplications(UUID.randomUUID(),candidate.getRepositoryId(),"main",0,100).isEmpty());
+        store.delete(org,candidate.getId(),0,now);assertTrue(store.autoDeployApplications(org,candidate.getRepositoryId(),"main",0,100).isEmpty());
+    }
+    KubernetesTarget target(KubernetesTarget.Status state){return targets.create(KubernetesTarget.builder().id(UUID.randomUUID()).organizationId(org)
+        .name("Cluster-"+UUID.randomUUID()).apiServer("https://cluster").namespace("shipora").credentials(new KubernetesTarget.Credentials("encrypted","v1"))
+        .status(state).version(0).createdAt(now).updatedAt(now).build());}
+    ManagedApplication kube(String slug,UUID target){return app(slug).toBuilder().runtimeType(RuntimeType.KUBERNETES).serverId(null).kubernetesTargetId(target).build();}
+    @Test void kubernetesTargetAndApplicationRoundTripEnforceTenantScope(){
+        var target=target(KubernetesTarget.Status.ACTIVE);var application=store.create(kube("kube",target.getId()));
+        var loaded=store.find(org,application.getId()).orElseThrow();
+        assertEquals(RuntimeType.KUBERNETES,loaded.getRuntimeType());assertNull(loaded.getServerId());assertEquals(target.getId(),loaded.getKubernetesTargetId());
+        UUID other=UUID.randomUUID();assertTrue(targets.find(other,target.getId()).isEmpty());assertTrue(targets.list(other,0,20).isEmpty());
+        assertThrows(ApplicationException.class,()->targets.delete(other,target.getId(),0,now));
+        assertThrows(ApplicationException.class,()->store.create(kube("other",target.getId()).toBuilder().organizationId(other).build()));
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("UPDATE application.applications SET organization_id=? WHERE id=?",other,application.getId()));
+    }
+    @Test void unverifiedAndDeletedTargetsCannotReceiveApplications(){
+        var target=target(KubernetesTarget.Status.UNVERIFIED);
+        assertEquals(ApplicationException.Kind.CONFLICT,assertThrows(ApplicationException.class,()->store.create(kube("kube",target.getId()))).getKind());
+        var docker=store.create(app("docker"));
+        assertThrows(ApplicationException.class,()->store.update(docker.toBuilder().runtimeType(RuntimeType.KUBERNETES).serverId(null).kubernetesTargetId(target.getId()).build(),0));
+        assertEquals(RuntimeType.DOCKER,store.find(org,docker.getId()).orElseThrow().getRuntimeType());
+        targets.delete(org,target.getId(),0,now);
+        assertEquals(ApplicationException.Kind.NOT_FOUND,assertThrows(ApplicationException.class,()->store.create(kube("kube",target.getId()))).getKind());
+        assertNull(jdbc.queryForObject("SELECT encrypted_credentials FROM application.kubernetes_targets WHERE id=?",String.class,target.getId()));
+    }
+    @Test void usedTargetsCannotBeDeletedUntilApplicationsAreMovedOrDeleted(){
+        var target=target(KubernetesTarget.Status.ACTIVE);var application=store.create(kube("kube",target.getId()));
+        assertEquals(ApplicationException.Kind.CONFLICT,assertThrows(ApplicationException.class,()->targets.delete(org,target.getId(),0,now)).getKind());
+        assertEquals(0,targets.find(org,target.getId()).orElseThrow().getVersion());
+        store.delete(org,application.getId(),0,now);targets.delete(org,target.getId(),0,now);
+        assertTrue(targets.find(org,target.getId()).isEmpty());
+    }
+    @Test void runtimeSwitchPersistsAndDatabaseRejectsAmbiguousDestinations(){
+        var target=target(KubernetesTarget.Status.ACTIVE);var docker=store.create(app("docker"));
+        var kube=store.update(docker.toBuilder().runtimeType(RuntimeType.KUBERNETES).serverId(null).kubernetesTargetId(target.getId()).build(),0);
+        assertEquals(1,kube.getVersion());assertEquals(target.getId(),kube.getKubernetesTargetId());
+        assertThrows(org.springframework.dao.DataIntegrityViolationException.class,()->jdbc.update("UPDATE application.applications SET server_id=? WHERE id=?",UUID.randomUUID(),docker.getId()));
+        var result=store.update(kube.toBuilder().runtimeType(RuntimeType.DOCKER).serverId(UUID.randomUUID()).kubernetesTargetId(null).build(),1);
+        assertEquals(RuntimeType.DOCKER,result.getRuntimeType());assertNull(result.getKubernetesTargetId());
+        targets.delete(org,target.getId(),0,now);
+    }
+    @Test void targetVersionPreventsStaleCheckFromOverwritingCredentialRotation(){
+        var target=target(KubernetesTarget.Status.ACTIVE);
+        var rotated=targets.update(target.toBuilder().credentials(new KubernetesTarget.Credentials("rotated-cipher","v1"))
+                .status(KubernetesTarget.Status.UNVERIFIED).checkedAt(null).build(),0);
+        assertEquals(1,rotated.getVersion());
+        assertEquals(ApplicationException.Kind.CONFLICT,assertThrows(ApplicationException.class,()->targets.update(target,0)).getKind());
+        assertEquals(KubernetesTarget.Status.UNVERIFIED,targets.find(org,target.getId()).orElseThrow().getStatus());
+        assertEquals("rotated-cipher",targets.find(org,target.getId()).orElseThrow().getCredentials().ciphertext());
+        assertThrows(ApplicationException.class,()->targets.delete(org,target.getId(),0,now));
+    }
+    @Test void concurrentTargetDeletionAndApplicationCreationNeverLeaveAnActiveDanglingReference()throws Exception{
+        try(var pool=Executors.newVirtualThreadPerTaskExecutor()){
+            for(int iteration=0;iteration<10;iteration++){
+                var target=target(KubernetesTarget.Status.ACTIVE);var application=kube("race-"+iteration,target.getId());var start=new CountDownLatch(1);
+                var create=pool.submit(()->{start.await();try{store.create(application);return true;}catch(ApplicationException e){assertEquals(ApplicationException.Kind.NOT_FOUND,e.getKind());return false;}});
+                var delete=pool.submit(()->{start.await();try{targets.delete(org,target.getId(),0,now);return true;}catch(ApplicationException e){assertEquals(ApplicationException.Kind.CONFLICT,e.getKind());return false;}});
+                start.countDown();boolean created=create.get(10,TimeUnit.SECONDS),deleted=delete.get(10,TimeUnit.SECONDS);
+                assertNotEquals(created,deleted);assertEquals(created,store.find(org,application.getId()).isPresent());assertEquals(created,targets.find(org,target.getId()).isPresent());
+            }
+        }
+    }
     @Test void migrationKeepsExistingUnownedRowsHiddenWithoutAssigningThemToATenant(){
         jdbc.execute("DROP SCHEMA application CASCADE");jdbc.execute("CREATE SCHEMA application");
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V1__create_application_tables.sql")).execute(jdbc.getDataSource());
@@ -108,6 +184,7 @@ class JdbcApplicationStoreTest {
             VALUES(?,?,?,'Legacy','legacy',3000)
             """,project,UUID.randomUUID(),UUID.randomUUID());
         new ResourceDatabasePopulator(new ClassPathResource("db/migration/V2__application_ownership_and_versioning.sql")).execute(jdbc.getDataSource());
+        new ResourceDatabasePopulator(new ClassPathResource("db/migration/V3__kubernetes_targets.sql")).execute(jdbc.getDataSource());
         assertEquals(1,jdbc.queryForObject("SELECT count(*) FROM application.applications",Integer.class));
         assertTrue(store.list(org,null,0,20).isEmpty());
     }

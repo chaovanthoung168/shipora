@@ -24,18 +24,18 @@ import java.util.UUID;
 public class SecurityConfiguration {
 
     @Bean
-    @Profile("local")
+    @Profile({"local","selfhost"})
     PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
-    @Profile("local")
+    @Profile({"local","selfhost"})
     UserDetailsService localUsers(
             @Value("${shipora.local.username}") String username,
             @Value("${shipora.local.password}") String password,
             @Value("${shipora.local.organization-id}") UUID organizationId,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,org.springframework.core.env.Environment environment
     ) {
         var developer = User.withUsername(username)
                 .password(passwordEncoder.encode(password))
@@ -47,12 +47,13 @@ public class SecurityConfiguration {
                 )
                 .build();
 
-        return new InMemoryUserDetailsManager(developer);
+        return com.shipora.pipeline.PipelineAccounts.users(java.util.List.of(developer),environment,passwordEncoder,organizationId);
     }
 
     @Bean
-    @Profile("local")
-    SecurityFilterChain localSecurity(HttpSecurity http) throws Exception {
+    @Profile({"local","selfhost"})
+    SecurityFilterChain localSecurity(HttpSecurity http,org.springframework.core.env.Environment environment) throws Exception {
+        if(environment.acceptsProfiles(org.springframework.core.env.Profiles.of("selfhost")))http.addFilterAfter(new com.shipora.pipeline.PipelineRequestGuard(),org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class);
         return http
                 // Local command-line development only.
                 .csrf(csrf -> csrf.disable())
@@ -64,6 +65,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR)
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST,"/internal/worker/jobs/*/server-context").hasRole("PIPELINE_WORKER")
+                        .requestMatchers(HttpMethod.GET,"/api/projects/*","/api/servers/*").hasAnyRole("PROJECT_ACCESS","SERVER_ACCESS","PIPELINE_AUTOMATION")
                         .requestMatchers(HttpMethod.POST, "/api/servers/*/connection-checks")
                         .hasRole("SERVER_CONNECT")
                         .requestMatchers(
@@ -84,7 +87,7 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    @Profile("!local")
+    @Profile("!local & !selfhost")
     SecurityFilterChain defaultSecurity(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize

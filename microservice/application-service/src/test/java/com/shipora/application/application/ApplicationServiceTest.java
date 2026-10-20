@@ -16,7 +16,8 @@ class ApplicationServiceTest {
     final SecretCipher cipher=mock(SecretCipher.class);
     final Instant now=Instant.parse("2026-10-18T00:00:00Z");
     final UUID org=UUID.randomUUID(),project=UUID.randomUUID(),repo=UUID.randomUUID(),server=UUID.randomUUID(),id=UUID.randomUUID();
-    final ApplicationService service=new ApplicationService(store,catalog,cipher,Clock.fixed(now,ZoneOffset.UTC));
+    final com.shipora.application.application.port.out.KubernetesTargetStore targets=mock(com.shipora.application.application.port.out.KubernetesTargetStore.class);
+    final ApplicationService service=new ApplicationService(store,catalog,cipher,Clock.fixed(now,ZoneOffset.UTC),targets);
     CreateApplication input(String name){return new CreateApplication(project,repo,server,name,"web",null,null,null,3000,null,null);}
     ManagedApplication app(){return ManagedApplication.builder().id(id).organizationId(org).projectId(project).repositoryId(repo).serverId(server)
         .name("Web").slug("web").branch("main").dockerfilePath("Dockerfile").buildContext(".").containerPort(3000).healthPath("/")
@@ -66,5 +67,42 @@ class ApplicationServiceTest {
         assertThrows(ApplicationException.class,()->service.replaceEnvironment(org,id,0,Map.of("BAD-KEY","x")));
         verifyNoInteractions(store);service.delete(org,id,3);verify(store).delete(org,id,3,now);
     }
+    @Test void kubernetesCreateUsesActiveOwnedTargetWithoutDockerServerLookup(){
+        UUID target=UUID.randomUUID();activeTarget(target);when(catalog.requireRepository(org,repo)).thenReturn("main");when(store.create(any())).thenAnswer(i->i.getArgument(0));
+        var result=service.create(org,new CreateApplication(project,repo,null,"Web","web",null,null,null,3000,null,true,RuntimeType.KUBERNETES,target));
+        assertEquals(RuntimeType.KUBERNETES,result.runtimeType());assertEquals(target,result.kubernetesTargetId());assertNull(result.serverId());
+        verify(catalog,never()).requireActiveServer(any(),any());
+    }
+    @Test void invalidRuntimeCombinationsAreRejectedBeforeNetworkCalls(){
+        assertThrows(ApplicationException.class,()->service.create(org,new CreateApplication(project,repo,server,"Web","web",null,null,null,3000,null,null,RuntimeType.KUBERNETES,UUID.randomUUID())));
+        assertThrows(ApplicationException.class,()->service.create(org,new CreateApplication(project,repo,null,"Web","web",null,null,null,3000,null,null,RuntimeType.DOCKER,null)));
+        verifyNoInteractions(catalog,store,targets);
+    }
+    @Test void missingOrUnverifiedTargetCannotBeUsed(){
+        UUID target=UUID.randomUUID();when(catalog.requireRepository(org,repo)).thenReturn("main");
+        var input=new CreateApplication(project,repo,null,"Web","web",null,null,null,3000,null,null,RuntimeType.KUBERNETES,target);
+        assertEquals(ApplicationException.Kind.NOT_FOUND,assertThrows(ApplicationException.class,()->service.create(org,input)).getKind());
+        when(targets.find(org,target)).thenReturn(Optional.of(KubernetesTarget.builder().id(target).status(KubernetesTarget.Status.UNVERIFIED).build()));
+        assertEquals(ApplicationException.Kind.CONFLICT,assertThrows(ApplicationException.class,()->service.create(org,input)).getKind());verifyNoInteractions(store);
+    }
+    @Test void switchesBetweenDockerAndKubernetesClearThePreviousDestination(){
+        UUID target=UUID.randomUUID();activeTarget(target);
+        when(store.find(org,id)).thenReturn(Optional.of(app()));when(store.update(any(),eq(0L))).thenAnswer(i->i.getArgument(0));
+        var kube=service.update(org,id,new UpdateApplication(0,null,null,null,null,null,null,null,null,null,null,RuntimeType.KUBERNETES,target));
+        assertNull(kube.serverId());assertEquals(target,kube.kubernetesTargetId());
+        when(store.find(org,id)).thenReturn(Optional.of(app().toBuilder().runtimeType(RuntimeType.KUBERNETES).serverId(null).kubernetesTargetId(target).build()));
+        var docker=service.update(org,id,new UpdateApplication(0,null,server,null,null,null,null,null,null,null,null,RuntimeType.DOCKER,null));
+        assertEquals(server,docker.serverId());assertNull(docker.kubernetesTargetId());
+        verify(catalog).requireActiveServer(org,server);
+    }
+    @Test void kubernetesPatchKeepsTargetAndSwitchRequiresAnExplicitNewDestination(){
+        UUID target=UUID.randomUUID();activeTarget(target);
+        when(store.find(org,id)).thenReturn(Optional.of(app().toBuilder().runtimeType(RuntimeType.KUBERNETES).serverId(null).kubernetesTargetId(target).build()));
+        when(store.update(any(),eq(0L))).thenAnswer(i->i.getArgument(0));
+        assertEquals(target,service.update(org,id,patch(0,"Renamed")).kubernetesTargetId());
+        assertThrows(ApplicationException.class,()->service.update(org,id,new UpdateApplication(0,null,null,null,null,null,null,null,null,null,null,RuntimeType.DOCKER,null)));
+        verify(catalog,never()).requireActiveServer(any(),any());
+    }
+    void activeTarget(UUID target){when(targets.find(org,target)).thenReturn(Optional.of(KubernetesTarget.builder().id(target).organizationId(org).status(KubernetesTarget.Status.ACTIVE).build()));}
     UpdateApplication patch(long version,String name){return new UpdateApplication(version,null,null,name,null,null,null,null,null,null,null);}
 }

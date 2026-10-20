@@ -2,6 +2,7 @@ package com.shipora.application.adapter.in.web;
 
 import com.shipora.application.adapter.in.security.CurrentOrganization;
 import com.shipora.application.application.dto.*;
+import com.shipora.application.domain.RuntimeType;
 import com.shipora.application.application.port.in.ApplicationUseCases;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -18,16 +19,18 @@ import java.util.*;
 public class ApplicationController {
     private final ApplicationUseCases service;
     private final CurrentOrganization organizations;
-    public record CreateRequest(@NotNull UUID projectId,@NotNull UUID repositoryId,@NotNull UUID serverId,
+    public record CreateRequest(@NotNull UUID projectId,@NotNull UUID repositoryId,UUID serverId,
             @NotBlank @Size(max=150) String name,@NotBlank @Size(max=100) String slug,
             @Size(max=255) String branch,@Size(max=255) String dockerfilePath,@Size(max=255) String buildContext,
-            @NotNull @Min(1) @Max(65535) Integer containerPort,@Size(max=255) String healthPath,Boolean autoDeploy) {
-        CreateApplication input(){return new CreateApplication(projectId,repositoryId,serverId,name,slug,branch,dockerfilePath,buildContext,containerPort,healthPath,autoDeploy);}
+            @NotNull @Min(1) @Max(65535) Integer containerPort,@Size(max=255) String healthPath,Boolean autoDeploy,
+            RuntimeType runtimeType,UUID kubernetesTargetId) {
+        CreateApplication input(){return new CreateApplication(projectId,repositoryId,serverId,name,slug,branch,dockerfilePath,buildContext,containerPort,healthPath,autoDeploy,runtimeType,kubernetesTargetId);}
     }
     public record UpdateRequest(@NotNull @PositiveOrZero Long version,UUID repositoryId,UUID serverId,@Size(max=150) String name,
             @Size(max=100) String slug,@Size(max=255) String branch,@Size(max=255) String dockerfilePath,@Size(max=255) String buildContext,
-            @Min(1) @Max(65535) Integer containerPort,@Size(max=255) String healthPath,Boolean autoDeploy) {
-        UpdateApplication input(){return new UpdateApplication(version,repositoryId,serverId,name,slug,branch,dockerfilePath,buildContext,containerPort,healthPath,autoDeploy);}
+            @Min(1) @Max(65535) Integer containerPort,@Size(max=255) String healthPath,Boolean autoDeploy,
+            RuntimeType runtimeType,UUID kubernetesTargetId) {
+        UpdateApplication input(){return new UpdateApplication(version,repositoryId,serverId,name,slug,branch,dockerfilePath,buildContext,containerPort,healthPath,autoDeploy,runtimeType,kubernetesTargetId);}
     }
     public record EnvironmentRequest(@NotNull @PositiveOrZero Long version,@NotNull Map<String,String> variables) {
         @Override public String toString(){return "EnvironmentRequest[redacted]";}

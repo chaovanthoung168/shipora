@@ -46,6 +46,36 @@ class GitWebSecurityTest {
     }
     @AfterEach void close() { if (context != null) context.close(); }
 
+    @Test void repositorySearchRequiresAuthenticationAndDerivesOrganization() throws Exception {
+        UUID installation = UUID.randomUUID();
+        String path = "/api/git/installations/" + installation + "/repositories";
+        mvc.perform(get(path).param("q", "storefront")).andExpect(status().isUnauthorized());
+        when(useCases.searchRepositories(ORG, installation, "storefront", 1, 10)).thenReturn(List.of());
+        mvc.perform(get(path).param("q", "storefront").param("page", "1").param("size", "10")
+                .with(httpBasic("developer", "test-only-password"))).andExpect(status().isOk());
+        verify(useCases).searchRepositories(ORG, installation, "storefront", 1, 10);
+        verify(useCases, never()).repositories(any(), any(), anyInt(), anyInt());
+    }
+    @Test void commitHistoryRequiresGitAccessAndDerivesOrganizationFromAuthentication() throws Exception {
+        UUID repository = UUID.randomUUID();
+        String path = "/api/git/repositories/" + repository + "/commits";
+        mvc.perform(get(path).param("branch", "main")).andExpect(status().isUnauthorized());
+        mvc.perform(get(path).param("branch", "main").with(user("member").roles("GIT_MANAGE")))
+                .andExpect(status().isForbidden());
+        when(useCases.commits(ORG, repository, "main", 0, 20)).thenReturn(List.of(
+                new CommitResult("a".repeat(40), "Fix build", "Author", Instant.EPOCH)));
+        mvc.perform(get(path).param("branch", "main").with(httpBasic("developer", "test-only-password")))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$[0].sha").value("a".repeat(40)))
+                .andExpect(jsonPath("$[0].token").doesNotExist());
+        verify(useCases).commits(ORG, repository, "main", 0, 20);
+    }
+    @Test void anotherOrganizationsCommitHistoryIs404() throws Exception {
+        UUID repository = UUID.randomUUID();
+        when(useCases.commits(ORG, repository, "main", 0, 20)).thenThrow(new GitException(GitException.Kind.NOT_FOUND, "Repository not found."));
+        mvc.perform(get("/api/git/repositories/" + repository + "/commits").param("branch", "main")
+                .with(httpBasic("developer", "test-only-password"))).andExpect(status().isNotFound());
+    }
     @Test void missingCredentialsReturns401() throws Exception {
         mvc.perform(get("/api/git/installations")).andExpect(status().isUnauthorized()); verifyNoInteractions(useCases);
     }

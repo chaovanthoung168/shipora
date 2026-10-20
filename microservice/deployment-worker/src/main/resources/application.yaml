@@ -1,22 +1,21 @@
 spring:
   application:
     name: deployment-worker
+  main:
+    web-application-type: none
+    keep-alive: true
 
-  datasource:
-    url: "jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:${POSTGRES_DB}}?currentSchema=deployment"
-    username: ${DB_USER:${POSTGRES_USER}}
-    password: ${DB_PASSWORD:${POSTGRES_PASSWORD}}
-
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate.default_schema: deployment
-
-  # deployment-service owns migrations for this shared schema.
-  flyway:
-    enabled: false
-
-server:
-  port: ${SERVER_PORT:8085}
+shipora:
+  worker:
+    enabled: ${SHIPORA_WORKER_ENABLED:false}
+    deployment-url: ${DEPLOYMENT_SERVICE_URL:http://localhost:8083}
+    application-url: ${APPLICATION_SERVICE_URL:http://localhost:8082}
+    git-url: ${GIT_SERVICE_URL:http://localhost:8084}
+    project-url: ${PROJECT_SERVICE_URL:http://localhost:8081}
+    username: ${LOCAL_WORKER_USERNAME:shipora-worker}
+    password: ${LOCAL_WORKER_PASSWORD:}
+    workspace: ${SHIPORA_WORKER_WORKSPACE:./.shipora/worker}
+    buildkit-address: ${BUILDKIT_HOST:unix:///run/buildkit/buildkitd.sock}
+    image-repository: ${SHIPORA_IMAGE_REPOSITORY:}
+    base-domain: ${SHIPORA_APPS_DOMAIN:}
+    ingress-class: ${SHIPORA_INGRESS_CLASS:}

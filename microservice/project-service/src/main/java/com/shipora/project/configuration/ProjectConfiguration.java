@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 
 @Configuration
+@org.springframework.context.annotation.Import(com.shipora.pipeline.PipelineConfiguration.class)
 public class ProjectConfiguration {
 
     @Bean

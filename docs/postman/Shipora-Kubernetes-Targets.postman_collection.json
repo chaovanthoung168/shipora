@@ -1,0 +1,638 @@
+{
+  "info": {
+    "name": "Shipora Kubernetes Targets",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Register and verify a Kubernetes namespace target, then configure an application to use it. This does not execute deployments yet. Follow docs/kubernetes-targets.md and apply infrastructure/kubernetes/target-access.yaml yourself to the intended cluster. Set username/password, kubeApiServer, kubeNamespace, kubeToken, kubeCaData, projectId and repositoryId. Run requests 1-3 individually. Token/CA are write-only; store tokens locally or in Vault. Optional rotation, negative and cleanup requests are explicit. Do not run all folders blindly."
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{username}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{password}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "developer",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "kubeApiServer",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "kubeNamespace",
+      "value": "shipora-apps",
+      "type": "string"
+    },
+    {
+      "key": "kubeToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "kubeCaData",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "kubernetesTargetId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetVersion",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "repositoryId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "applicationId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "applicationVersion",
+      "value": "0",
+      "type": "string"
+    },
+    {
+      "key": "newKubeToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serverId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code >= 200 && pm.response.code < 300 && pm.response.text()) {",
+          "  const data = pm.response.json();",
+          "  if (data.id && data.apiServer && data.namespace) {",
+          "    pm.collectionVariables.set('kubernetesTargetId', data.id);",
+          "    pm.collectionVariables.set('targetVersion', String(data.version));",
+          "    pm.test('Credentials are absent', () => { ['token','credentials','certificateAuthorityData','encryptedCredentials'].forEach(key => pm.expect(data).not.to.have.property(key)); });",
+          "  }",
+          "  if (data.id && data.runtimeType) {",
+          "    pm.collectionVariables.set('applicationId', data.id);",
+          "    pm.collectionVariables.set('applicationVersion', String(data.version));",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Register Kubernetes namespace target",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/kubernetes-targets",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"My Kubernetes target\",\n  \"apiServer\": \"{{kubeApiServer}}\",\n  \"namespace\": \"{{kubeNamespace}}\",\n  \"token\": \"{{kubeToken}}\",\n  \"certificateAuthorityData\": \"{{kubeCaData}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Verify connection and permissions",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}/connection-checks",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"version\": {{targetVersion}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test('Target is ACTIVE', () => pm.expect(pm.response.json().status).to.equal('ACTIVE'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Create Kubernetes application",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/applications",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"projectId\": \"{{projectId}}\",\n  \"repositoryId\": \"{{repositoryId}}\",\n  \"name\": \"Web on Kubernetes\",\n  \"slug\": \"web-kubernetes\",\n  \"runtimeType\": \"KUBERNETES\",\n  \"kubernetesTargetId\": \"{{kubernetesTargetId}}\",\n  \"branch\": \"main\",\n  \"dockerfilePath\": \"Dockerfile\",\n  \"buildContext\": \".\",\n  \"containerPort\": 3000,\n  \"healthPath\": \"/\",\n  \"autoDeploy\": false\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Get target metadata",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. List targets",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/kubernetes-targets?page=0&size=20"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Get application configuration",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/applications/{{applicationId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Optional - rotation and runtime switching",
+      "item": [
+        {
+          "name": "Rotate token (set newKubeToken first)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{targetVersion}},\n  \"token\": \"{{newKubeToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test('Rotation requires re-verification', () => pm.expect(pm.response.json().status).to.equal('UNVERIFIED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify rotated credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}/connection-checks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{targetVersion}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test('Target is ACTIVE', () => pm.expect(pm.response.json().status).to.equal('ACTIVE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rename target",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{targetVersion}},\n  \"name\": \"Renamed Kubernetes target\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Switch application to Docker (set ACTIVE serverId)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{applicationVersion}},\n  \"runtimeType\": \"DOCKER\",\n  \"serverId\": \"{{serverId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Switch application back to Kubernetes",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{applicationVersion}},\n  \"runtimeType\": \"KUBERNETES\",\n  \"kubernetesTargetId\": \"{{kubernetesTargetId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Optional - negative tests (after steps 1-3)",
+      "item": [
+        {
+          "name": "Stale connection-check version",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}/connection-checks",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject plain HTTP API endpoint",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/kubernetes-targets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid target\",\n  \"apiServer\": \"http://cluster:6443\",\n  \"namespace\": \"shipora-apps\",\n  \"token\": \"test-only-token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject ambiguous runtime destination",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": {{applicationVersion}},\n  \"runtimeType\": \"KUBERNETES\",\n  \"serverId\": \"11111111-1111-1111-1111-111111111111\",\n  \"kubernetesTargetId\": \"{{kubernetesTargetId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject deletion of a target used by an application",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}?version={{targetVersion}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing target",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/kubernetes-targets/00000000-0000-0000-0000-000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cleanup - explicit only",
+      "item": [
+        {
+          "name": "Delete application first",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/applications/{{applicationId}}?version={{applicationVersion}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete target and erase encrypted credentials",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/kubernetes-targets/{{kubernetesTargetId}}?version={{targetVersion}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

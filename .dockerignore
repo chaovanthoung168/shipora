@@ -1,0 +1,14 @@
+.git
+**/.gradle
+**/node_modules
+**/.shipora
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/.ssh
+infrastructure/pipeline/registry
+infrastructure/pipeline/ssh
+infrastructure/pipeline/worker.yaml
+infrastructure/pipeline/project.yaml

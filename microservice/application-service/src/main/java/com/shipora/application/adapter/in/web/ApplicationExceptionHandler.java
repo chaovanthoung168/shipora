@@ -8,7 +8,7 @@ import org.springframework.web.bind.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-@RestControllerAdvice(assignableTypes=ApplicationController.class)
+@RestControllerAdvice(assignableTypes={ApplicationController.class,KubernetesTargetController.class,PipelineController.class})
 public class ApplicationExceptionHandler {
     @ExceptionHandler(ApplicationException.class)
     public ResponseEntity<ProblemDetail> application(ApplicationException e){
@@ -25,7 +25,7 @@ public class ApplicationExceptionHandler {
             HttpMessageNotReadableException.class,MethodArgumentTypeMismatchException.class})
     public ResponseEntity<ProblemDetail> invalid(Exception e){return problem(HttpStatus.BAD_REQUEST,"Invalid request body or parameters.");}
     @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<ProblemDetail> duplicate(DuplicateKeyException e){return problem(HttpStatus.CONFLICT,"An application with this slug already exists in the project.");}
+    public ResponseEntity<ProblemDetail> duplicate(DuplicateKeyException e){return problem(HttpStatus.CONFLICT,"An application slug or Kubernetes target name is already in use.");}
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ProblemDetail> storage(DataAccessException e){return problem(HttpStatus.SERVICE_UNAVAILABLE,"Application storage is unavailable.");}
     private ResponseEntity<ProblemDetail> problem(HttpStatus status,String detail){

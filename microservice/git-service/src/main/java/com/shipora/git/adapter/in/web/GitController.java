@@ -70,8 +70,11 @@ public class GitController {
     @GetMapping("/installations/{id}/repositories")
     public List<RepositoryResult> repositories(Authentication auth, @PathVariable("id") UUID id,
                                                @RequestParam(name = "page", defaultValue = "0") int page,
-                                               @RequestParam(name = "size", defaultValue = "20") int size) {
-        return useCases.repositories(organization.require(auth), id, page, size);
+                                               @RequestParam(name = "size", defaultValue = "20") int size,
+                                               @RequestParam(name = "q", required = false) String query) {
+        UUID org = organization.require(auth);
+        return query == null ? useCases.repositories(org, id, page, size)
+                : useCases.searchRepositories(org, id, query, page, size);
     }
     @GetMapping("/repositories/{id}")
     public RepositoryResult repository(Authentication auth, @PathVariable("id") UUID id) {
@@ -80,6 +83,14 @@ public class GitController {
     @PostMapping("/installations/{id}/sync")
     public SyncResponse synchronize(Authentication auth, @PathVariable("id") UUID id) {
         return new SyncResponse(useCases.synchronize(organization.require(auth), id));
+    }
+    @GetMapping("/repositories/{id}/commits")
+    public ResponseEntity<List<CommitResult>> commits(Authentication auth, @PathVariable("id") UUID id,
+            @RequestParam("branch") String branch,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(useCases.commits(organization.require(auth), id, branch, page, size));
     }
     @PostMapping("/webhooks/github")
     public WebhookResponse webhook(HttpServletRequest request,

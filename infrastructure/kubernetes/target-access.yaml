@@ -1,0 +1,76 @@
+# Apply to the customer cluster with an administrator context.
+# This grants access to the dedicated shipora-apps namespace only, plus the
+# namespace existence check and self permission reviews. It grants no cluster-admin.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shipora-apps
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shipora-deployer
+  namespace: shipora-apps
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shipora-deployer
+  namespace: shipora-apps
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    verbs: [get, list, watch, create, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses]
+    verbs: [get, create, patch, delete]
+  - apiGroups: [""]
+    resources: [services, configmaps, secrets]
+    verbs: [get, create, patch, delete]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shipora-deployer
+  namespace: shipora-apps
+subjects:
+  - kind: ServiceAccount
+    name: shipora-deployer
+    namespace: shipora-apps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: shipora-deployer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: shipora-apps-connection-check
+rules:
+  - apiGroups: [""]
+    resources: [namespaces]
+    resourceNames: [shipora-apps]
+    verbs: [get]
+  - apiGroups: [authorization.k8s.io]
+    resources: [selfsubjectaccessreviews]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: shipora-apps-connection-check
+subjects:
+  - kind: ServiceAccount
+    name: shipora-deployer
+    namespace: shipora-apps
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: shipora-apps-connection-check

@@ -188,6 +188,53 @@ public final class GitHubClient implements GitProvider, GitHubRegistration, Auto
             throw new GitException(PROVIDER, "Repository synchronization exceeds the configured 10,000 repository limit.");
         });
     }
+    @Override public ReadAccess readAccess(String installation,String repository,String fullName,String branch){
+        requireConfigured();
+        if(!installation.matches("[1-9][0-9]{0,19}") || !repository.matches("[1-9][0-9]{0,19}") || !fullName.matches("[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+"))throw providerFailure();
+        return bounded(()->{
+            String body=json.writeValueAsString(Map.of("repository_ids",List.of(new java.math.BigInteger(repository)),"permissions",Map.of("contents","read")));
+            var result=request(api("/app/installations/"+installation+"/access_tokens"),appJwt(),body,false);
+            String token=text(result,"token");java.time.Instant expires=java.time.Instant.parse(text(result,"expires_at"));
+            if(blank(token) || !expires.isAfter(clock.instant().plusSeconds(30)))throw providerFailure();
+            String head=null;
+            if(branch!=null){
+                if(!branch.matches("[A-Za-z0-9_][A-Za-z0-9_./-]{0,254}") || branch.contains("..") || branch.contains("//"))throw providerFailure();
+                String ref=java.util.Arrays.stream(branch.split("/")).map(GitHubClient::encode).collect(java.util.stream.Collectors.joining("/"));
+                head=request(api("/repos/"+fullName+"/git/ref/heads/"+ref),token,null,false).path("object").path("sha").asText("");
+                if(!head.matches("[0-9a-f]{40}|[0-9a-f]{64}"))throw providerFailure();
+            }
+            return new ReadAccess(token,expires,head);
+        });
+    }
+    @Override public List<com.shipora.git.application.dto.CommitResult> commits(String installation, String repository,
+            String fullName, String branch, int page, int size) {
+        if (branch == null || !branch.matches("[A-Za-z0-9_][A-Za-z0-9_./-]{0,254}")
+                || branch.contains("..") || branch.contains("//") || branch.endsWith("/")
+                || page < 0 || page > 1000 || size < 1 || size > 100)
+            throw new GitException(INVALID, "Invalid branch or commit pagination.");
+        // Reuse single-repository, contents-read credentials; never return them to callers.
+        var access = readAccess(installation, repository, fullName, null);
+        return bounded(() -> {
+            JsonNode items = request(api("/repos/" + fullName + "/commits?sha=" + encode(branch)
+                    + "&per_page=" + size + "&page=" + (page + 1)), access.token(), null, false);
+            requireArray(items);
+            if (items.size() > size) throw providerFailure();
+            var result = new ArrayList<com.shipora.git.application.dto.CommitResult>();
+            for (JsonNode item : items) {
+                String sha = text(item, "sha");
+                if (!sha.matches("[0-9a-f]{40}|[0-9a-f]{64}")) throw providerFailure();
+                var commit = item.path("commit");
+                String message = text(commit, "message").lines().findFirst().orElse("");
+                if (message.length() > 500) message = message.substring(0, 500);
+                String author = text(commit.path("author"), "name");
+                if (author.length() > 150) author = author.substring(0, 150);
+                String date = text(commit.path("committer"), "date");
+                result.add(new com.shipora.git.application.dto.CommitResult(sha, message, author,
+                        blank(date) ? null : Instant.parse(date)));
+            }
+            return List.copyOf(result);
+        });
+    }
     private String appJwt() {
         try {
             String pem = blank(properties().privateKeyPem()) ? Files.readString(properties().privateKey()) : properties().privateKeyPem();

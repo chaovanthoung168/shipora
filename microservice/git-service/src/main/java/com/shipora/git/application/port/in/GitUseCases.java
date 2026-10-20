@@ -9,6 +9,8 @@ public interface GitUseCases {
     InstallationResult completeConnection(String state, String code);
     List<InstallationResult> installations(UUID organizationId, int page, int size);
     List<RepositoryResult> repositories(UUID organizationId, UUID installationId, int page, int size);
+    List<RepositoryResult> searchRepositories(UUID organizationId, UUID installationId, String query, int page, int size);
     RepositoryResult repository(UUID organizationId, UUID repositoryId);
+    List<CommitResult> commits(UUID organizationId, UUID repositoryId, String branch, int page, int size);
     int synchronize(UUID organizationId, UUID installationId);
 }

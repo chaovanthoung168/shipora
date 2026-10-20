@@ -9,6 +9,7 @@ public interface ApplicationStore {
     ManagedApplication create(ManagedApplication app);
     Optional<ManagedApplication> find(UUID org, UUID id);
     List<ManagedApplication> list(UUID org, UUID projectId, int offset, int limit);
+    List<ManagedApplication> autoDeployApplications(UUID org,UUID repositoryId,String branch,int offset,int limit);
     ManagedApplication update(ManagedApplication app, long expectedVersion);
     void delete(UUID org, UUID id, long version, Instant now);
     EnvironmentResult environment(UUID org, UUID id);

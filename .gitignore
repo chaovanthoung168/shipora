@@ -1,2 +1,10 @@
 # Runtime encryption keys generated separately for each Shipora installation.
 .shipora/
+
+# Installation credentials and local pipeline configuration.
+*.pem
+infrastructure/pipeline/.env
+infrastructure/pipeline/worker.yaml
+infrastructure/pipeline/project.yaml
+infrastructure/pipeline/registry/
+infrastructure/pipeline/ssh/

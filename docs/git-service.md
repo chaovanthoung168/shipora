@@ -4,6 +4,37 @@ Git Service owns instance GitHub App setup, verified account connections,
 repository metadata and signed webhooks. It runs on port 8084 and uses the
 PostgreSQL git schema. It serves JSON; Next.js owns the dashboard UI.
 
+## Repository search
+
+`GET /api/git/installations/{id}/repositories?q=storefront&page=0&size=10`
+searches synchronized repository names within the authenticated organization's
+installation. `q` is an optional, case-insensitive literal substring (trimmed,
+at most 200 characters); `%` and `_` are literal characters. Filtering happens
+before pagination, so matches beyond the original first page are included.
+Omitting or leaving `q` blank preserves the existing paged list. The response
+is the same repository array, including availability and default branch.
+Search uses stored metadata and does not contact GitHub. The application form
+uses the connected account automatically and shows results only after a search.
+
+## Repository commits
+
+`GET /api/git/repositories/{id}/commits?branch=main&page=0&size=20` lists live
+GitHub commit history for a synchronized repository. Authentication requires
+`GIT_ACCESS`; repository and installation ownership are checked against the
+authenticated organization before any GitHub request. Unavailable repositories
+or inactive installations require reconnecting/synchronizing first.
+
+The branch is required, pagination is zero-based (`page` 0–1000, `size` 1–100),
+and the response is an uncached JSON array of `{sha, message, authorName,
+committedAt}`. `message` is the first line, bounded to 500 characters;
+`committedAt` may be null. Branch names use the source adapter's supported
+letters/numbers/underscore/dot/hyphen/slash format. No credential is returned.
+The adapter uses GitHub's [list commits endpoint](https://docs.github.com/en/rest/commits/commits#list-commits)
+with `sha=<branch>` and a short-lived installation token restricted to that
+repository with Contents read permission. The Next.js deployment form uses
+these results and sends the chosen full SHA to Deployment Service, preserving
+exact-commit checkout. This read operation never queues a deployment.
+
 ## Customer experience
 
 1. Start Shipora with Docker Compose and sign in.

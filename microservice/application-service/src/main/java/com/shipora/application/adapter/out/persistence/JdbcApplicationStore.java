@@ -13,22 +13,40 @@ import java.util.*;
 import static com.shipora.application.domain.ApplicationException.Kind.*;
 
 @Repository
-public class JdbcApplicationStore implements ApplicationStore {
+public class JdbcApplicationStore implements ApplicationStore,WorkerConfigurationPort {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate tx;
     public JdbcApplicationStore(JdbcTemplate jdbc,PlatformTransactionManager manager){this.jdbc=jdbc;this.tx=new TransactionTemplate(manager);}
     @Override public ManagedApplication create(ManagedApplication app) {
+        return tx.execute(status->{
+        lockTarget(app);
         jdbc.update("""
             INSERT INTO application.applications (id,organization_id,project_id,repository_id,server_id,name,slug,branch,
-                dockerfile_path,build_context,container_port,health_path,auto_deploy,version,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                dockerfile_path,build_context,container_port,health_path,auto_deploy,version,created_at,updated_at,runtime_type,kubernetes_target_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,app.getId(),app.getOrganizationId(),app.getProjectId(),app.getRepositoryId(),app.getServerId(),app.getName(),app.getSlug(),
                 app.getBranch(),app.getDockerfilePath(),app.getBuildContext(),app.getContainerPort(),app.getHealthPath(),app.isAutoDeploy(),
-                app.getVersion(),Timestamp.from(app.getCreatedAt()),Timestamp.from(app.getUpdatedAt()));
+                app.getVersion(),Timestamp.from(app.getCreatedAt()),Timestamp.from(app.getUpdatedAt()),app.getRuntimeType().name(),app.getKubernetesTargetId());
         return app;
+        });
     }
     @Override public Optional<ManagedApplication> find(UUID org,UUID id){
         return jdbc.query("SELECT * FROM application.applications WHERE organization_id=? AND id=? AND deleted_at IS NULL",this::row,org,id).stream().findFirst();
+    }
+    @Override public List<ManagedApplication> autoDeployApplications(UUID org,UUID repositoryId,String branch,int offset,int limit){
+        return jdbc.query("SELECT * FROM application.applications WHERE organization_id=? AND repository_id=? AND branch=? AND auto_deploy AND deleted_at IS NULL ORDER BY id LIMIT ? OFFSET ?",this::row,org,repositoryId,branch,limit,offset);
+    }
+    @Override public WorkerConfigurationPort.Values workerConfiguration(UUID org,UUID app,long expected){
+        return tx.execute(status->{
+            var versions=jdbc.queryForList("SELECT version FROM application.applications WHERE organization_id=? AND id=? AND deleted_at IS NULL FOR SHARE",Long.class,org,app);
+            if(versions.isEmpty())throw missing();
+            if(versions.getFirst()!=expected)throw new ApplicationException(CONFLICT,"Application configuration changed after this deployment was queued.");
+            var env=new TreeMap<String,String>();
+            jdbc.query("SELECT key,value FROM application.application_env_vars WHERE application_id=?",(org.springframework.jdbc.core.RowCallbackHandler)rs->env.put(rs.getString("key"),rs.getString("value")),app);
+            var secrets=new TreeMap<String,SecretCipher.Encrypted>();
+            jdbc.query("SELECT key,encrypted_value,encryption_key_version FROM application.application_secrets WHERE application_id=?",(org.springframework.jdbc.core.RowCallbackHandler)rs->secrets.put(rs.getString("key"),new SecretCipher.Encrypted(rs.getString("encrypted_value"),rs.getString("encryption_key_version"))),app);
+            return new WorkerConfigurationPort.Values(expected,env,secrets);
+        });
     }
     @Override public List<ManagedApplication> list(UUID org,UUID project,int offset,int limit) {
         return project==null ? jdbc.query("""
@@ -41,13 +59,14 @@ public class JdbcApplicationStore implements ApplicationStore {
     }
     @Override public ManagedApplication update(ManagedApplication app,long expected){
         return tx.execute(status->{
+            lockTarget(app);
             int changed=jdbc.update("""
                 UPDATE application.applications SET repository_id=?,server_id=?,name=?,slug=?,branch=?,dockerfile_path=?,
-                build_context=?,container_port=?,health_path=?,auto_deploy=?,version=version+1,updated_at=?
+                build_context=?,container_port=?,health_path=?,auto_deploy=?,version=version+1,updated_at=?,runtime_type=?,kubernetes_target_id=?
                 WHERE organization_id=? AND id=? AND version=? AND deleted_at IS NULL
                 """,app.getRepositoryId(),app.getServerId(),app.getName(),app.getSlug(),app.getBranch(),app.getDockerfilePath(),
                     app.getBuildContext(),app.getContainerPort(),app.getHealthPath(),app.isAutoDeploy(),Timestamp.from(app.getUpdatedAt()),
-                    app.getOrganizationId(),app.getId(),expected);
+                    app.getRuntimeType().name(),app.getKubernetesTargetId(),app.getOrganizationId(),app.getId(),expected);
             if(changed!=1) stale(app.getOrganizationId(),app.getId());
             return find(app.getOrganizationId(),app.getId()).orElseThrow(JdbcApplicationStore::missing);
         });
@@ -121,9 +140,18 @@ public class JdbcApplicationStore implements ApplicationStore {
         throw new ApplicationException(CONFLICT,"Application version changed. Reload and retry.");
     }
     private static ApplicationException missing(){return new ApplicationException(NOT_FOUND,"Application not found.");}
+    private void lockTarget(ManagedApplication app) {
+        if(app.getRuntimeType()!=RuntimeType.KUBERNETES)return;
+        // Serialize target deletion/credential changes with application creation and reassignment.
+        var states=jdbc.queryForList("SELECT status FROM application.kubernetes_targets WHERE organization_id=? AND id=? AND deleted_at IS NULL FOR SHARE",
+                String.class,app.getOrganizationId(),app.getKubernetesTargetId());
+        if(states.isEmpty())throw new ApplicationException(NOT_FOUND,"Kubernetes target not found.");
+        if(!states.getFirst().equals("ACTIVE"))throw new ApplicationException(CONFLICT,"Run a successful Kubernetes target connection check first.");
+    }
     private ManagedApplication row(ResultSet rs,int n)throws SQLException {
         return ManagedApplication.builder().id(rs.getObject("id",UUID.class)).organizationId(rs.getObject("organization_id",UUID.class))
                 .projectId(rs.getObject("project_id",UUID.class)).repositoryId(rs.getObject("repository_id",UUID.class)).serverId(rs.getObject("server_id",UUID.class))
+                .runtimeType(RuntimeType.valueOf(rs.getString("runtime_type"))).kubernetesTargetId(rs.getObject("kubernetes_target_id",UUID.class))
                 .name(rs.getString("name")).slug(rs.getString("slug")).branch(rs.getString("branch")).dockerfilePath(rs.getString("dockerfile_path"))
                 .buildContext(rs.getString("build_context")).containerPort(rs.getInt("container_port")).healthPath(rs.getString("health_path"))
                 .autoDeploy(rs.getBoolean("auto_deploy")).version(rs.getLong("version")).createdAt(rs.getTimestamp("created_at").toInstant())

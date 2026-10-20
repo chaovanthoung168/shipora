@@ -1,12 +1,18 @@
 # Application Service
 
 Application Service stores the configuration that connects a project, GitHub
-repository and deployment server. It runs on port 8082 and owns only the
+repository and Docker server or Kubernetes namespace target. It runs on port 8082 and owns only the
 PostgreSQL application schema.
 
 It does not clone code, build images, enqueue deployments, configure DNS or run
 containers. Those operations belong to Deployment Service and Deployment Worker.
-The autoDeploy setting is stored but has no effect until that workflow exists.
+The autoDeploy setting opts an application into signed GitHub push deployment
+when the worker and automatic delivery are enabled.
+
+Deployment orchestration APIs are available in [Deployment Service](deployment-service.md).
+They queue work and record worker reports. Runtime execution is implemented in
+Deployment Worker; see [deployment-pipeline.md](deployment-pipeline.md) for setup
+and end-to-end Postman testing.
 
 ## Run locally
 
@@ -51,6 +57,10 @@ bounded, timed out, and never follow redirects. Upstream response bodies and
 credentials are not returned in error messages.
 
 ## Prepare the references
+
+For Kubernetes, follow [Kubernetes targets](kubernetes-targets.md) instead of
+registering a Docker server. The Kubernetes guide includes RBAC and a separate
+Postman collection. Existing requests default to runtimeType DOCKER.
 
 - Create a project through Project Service.
 - Register a server and run its connection check until its status is ACTIVE.
@@ -231,6 +241,11 @@ organization remain stored but hidden; the migration does not guess ownership.
 New writes require an organization. An operator must explicitly verify and assign
 ownership before adopting legacy rows.
 
+V3 adds encrypted Kubernetes targets and the application's runtime type and target
+reference. Existing applications remain DOCKER. PostgreSQL enforces exactly one
+destination and a tenant-scoped target foreign key; target row locks serialize
+application assignment with target deletion and credential updates.
+
 Application domain and input validation cover safe paths, branches, ports,
 configuration limits and pagination. PostgreSQL guards configuration/version
 mutations transactionally. Automatic deployment, domain provisioning, build
@@ -254,9 +269,7 @@ test and must select a separate disposable shipora_application_test_* database.
 It uses Flyway, while the JDBC tests above recreate their schema directly; do not
 point both test variables at the same database.
 
-Verified: 49 tests passed with no skips, including 11 PostgreSQL store tests and
-one full Spring startup/HTTP test. An additional isolated HTTP check used fixture
-Project/Git servers and real PostgreSQL to exercise caller forwarding, CRUD,
-reference availability, optimistic versions, environment/secret rollback, tenant
-isolation, restart/decryption recovery and soft deletion. No real server or
-GitHub repository was modified by these checks.
+The suite includes PostgreSQL store tests, full Spring startup/authenticated HTTP
+tests, Kubernetes HTTPS fixture tests and Docker compatibility regressions. See
+the Kubernetes target guide for coverage. No real server, GitHub repository or
+customer cluster is modified by these checks.

@@ -1,0 +1,11 @@
+shipora:
+  ssh:
+    targets: []
+    # - organization-id: "11111111-1111-1111-1111-111111111111"
+    #   credential-secret-ref: "ssh/my-server"
+    #   host: "192.0.2.10"
+    #   port: 22
+    #   username: "shipora"
+    #   host-key-fingerprint: "SHA256:verified-fingerprint"
+    #   host-key-algorithm: "ssh-ed25519"
+    #   private-key: /run/shipora/ssh/runtime-key

@@ -1,0 +1,13 @@
+shipora:
+  worker:
+    docker-config: /run/shipora/registry
+    ssh-targets: []
+    # For a Docker target, replace [] above with the same pinned target as Project Service:
+    # - organization-id: "11111111-1111-1111-1111-111111111111"
+    #   credential-ref: "ssh/my-server"
+    #   host: "192.0.2.10"
+    #   port: 22
+    #   username: "shipora"
+    #   fingerprint: "SHA256:verified-fingerprint"
+    #   host-key-algorithm: "ssh-ed25519"
+    #   private-key: /run/shipora/ssh/runtime-key

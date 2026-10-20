@@ -146,6 +146,41 @@ class GitHubClientTest {
             assertTrue(Thread.currentThread().isInterrupted()); assertTrue(pending.isCancelled());
         } finally { Thread.interrupted(); }
     }
+    @Test void commitHistoryUsesRepositoryScopedReadTokenAndEncodedBranchWithOneBasedPagination() {
+        responses.put("/app/installations/123/access_tokens", "{\"token\":\"scoped-token\",\"expires_at\":\"2026-10-18T01:00:00Z\"}");
+        responses.put("/repos/owner/repo/commits?sha=feature/health&per_page=20&page=2",
+                "[{\"sha\":\"" + "a".repeat(40) + "\",\"commit\":{\"message\":\"Fix health check\\nMore detail\",\"author\":{\"name\":\"Author\"},\"committer\":{\"date\":\"2026-10-17T12:00:00Z\"}}}]");
+        var commits = client.commits("123", "456", "owner/repo", "feature/health", 1, 20);
+        assertEquals("Fix health check", commits.getFirst().message());
+        assertEquals("Author", commits.getFirst().authorName());
+        assertEquals(Instant.parse("2026-10-17T12:00:00Z"), commits.getFirst().committedAt());
+        assertEquals("Bearer scoped-token", requests.getLast().headers().firstValue("Authorization").orElseThrow());
+        assertTrue(requests.getLast().uri().getRawQuery().contains("sha=feature%2Fhealth"));
+        var body = new java.io.ByteArrayOutputStream();
+        requests.getFirst().bodyPublisher().orElseThrow().subscribe(new Flow.Subscriber<java.nio.ByteBuffer>() {
+            public void onSubscribe(Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
+            public void onNext(java.nio.ByteBuffer buffer) { byte[] bytes = new byte[buffer.remaining()]; buffer.get(bytes); body.writeBytes(bytes); }
+            public void onError(Throwable error) { fail(error); }
+            public void onComplete() {}
+        });
+        var tokenRequest = tools.jackson.databind.json.JsonMapper.builder().build().readTree(body.toString(StandardCharsets.UTF_8));
+        assertEquals(456, tokenRequest.path("repository_ids").get(0).asInt());
+        assertEquals("read", tokenRequest.path("permissions").path("contents").asText());
+        assertFalse(commits.toString().contains("scoped-token"));
+    }
+    @Test void emptyCommitHistoryIsAllowedButMalformedShasAreRejected() {
+        responses.put("/app/installations/123/access_tokens", "{\"token\":\"scoped-token\",\"expires_at\":\"2026-10-18T01:00:00Z\"}");
+        String path = "/repos/owner/repo/commits?sha=main&per_page=20&page=1";
+        responses.put(path, "[]");
+        assertTrue(client.commits("123", "456", "owner/repo", "main", 0, 20).isEmpty());
+        responses.put(path, "[{\"sha\":\"invalid\"}]");
+        assertEquals(GitException.Kind.PROVIDER, assertThrows(GitException.class,
+                () -> client.commits("123", "456", "owner/repo", "main", 0, 20)).getKind());
+    }
+    @Test void invalidCommitBranchDoesNotIssueAnInstallationToken() {
+        assertThrows(GitException.class, () -> client.commits("123", "456", "owner/repo", "main&sha=bad", 0, 20));
+        assertTrue(requests.isEmpty());
+    }
     private void organization() {
         responses.put("/app/installations/123", "{\"app_id\":42,\"suspended_at\":null,\"account\":{\"id\":1,\"login\":\"owner\",\"type\":\"Organization\"}}");
     }
@@ -171,6 +206,31 @@ class GitHubClientTest {
     @Test void activeCheckRejectsSuspensionBeforeBrowserSelectionLinksInstallation() {
         responses.put("/app/installations/123", "{\"app_id\":42,\"suspended_at\":\"2026-10-18T00:00:00Z\"}");
         assertThrows(GitException.class, () -> client.requireActiveInstallation("123"));
+    }
+    @Test void workerTokenIsRestrictedToOneRepositoryAndContentsRead() {
+        responses.put("/app/installations/123/access_tokens", "{\"token\":\"checkout-token\",\"expires_at\":\"2026-10-18T01:00:00Z\"}");
+        responses.put("/repos/owner/repo/git/ref/heads/feature/test", "{\"object\":{\"sha\":\"" + "a".repeat(40) + "\"}}");
+        var access = client.readAccess("123", "55", "owner/repo", "feature/test");
+        assertEquals("a".repeat(40), access.branchHead());
+        assertEquals("Bearer checkout-token", requests.getLast().headers().firstValue("Authorization").orElseThrow());
+        var subscriber = new java.util.concurrent.Flow.Subscriber<ByteBuffer>() {
+            String body = "";
+            public void onSubscribe(Flow.Subscription subscription) { subscription.request(Long.MAX_VALUE); }
+            public void onNext(ByteBuffer item) { byte[] bytes = new byte[item.remaining()]; item.get(bytes); body += new String(bytes, StandardCharsets.UTF_8); }
+            public void onError(Throwable error) { throw new AssertionError(error); }
+            public void onComplete() {}
+        };
+        requests.getFirst().bodyPublisher().orElseThrow().subscribe(subscriber);
+        var payload = tools.jackson.databind.json.JsonMapper.builder().build().readTree(subscriber.body);
+        assertEquals(55, payload.path("repository_ids").get(0).asInt());
+        assertEquals(1, payload.path("repository_ids").size());
+        assertEquals("read", payload.path("permissions").path("contents").asText());
+        assertEquals(1, payload.path("permissions").size());
+        assertFalse(access.toString().contains("checkout-token"));
+    }
+    @Test void expiredWorkerTokenCannotBeUsedForCheckout() {
+        responses.put("/app/installations/123/access_tokens", "{\"token\":\"expired\",\"expires_at\":\"2026-10-17T23:59:00Z\"}");
+        assertThrows(GitException.class, () -> client.readAccess("123", "55", "owner/repo", null));
     }
     private void discoveryFixtures() {
         responses.put("/app", "{\"slug\":\"shipora\"}");

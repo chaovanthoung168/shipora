@@ -18,6 +18,32 @@ class GitServiceTest {
     private final UUID org = UUID.randomUUID(), id = UUID.randomUUID();
     private final GitInstallation installation = new GitInstallation(id, org, "123", "owner", true, 0, now);
 
+    @Test void repositorySearchIsScopedTrimmedAndPagedWithoutCallingGithub() {
+        when(store.installation(org, id)).thenReturn(Optional.of(installation));
+        when(store.searchRepositories(org, id, "StoreFront", 10, 10)).thenReturn(List.of());
+        assertTrue(service.searchRepositories(org, id, "  StoreFront  ", 1, 10).isEmpty());
+        verify(store).searchRepositories(org, id, "StoreFront", 10, 10);
+        verifyNoInteractions(provider);
+    }
+    @Test void repositorySearchDeniesAnotherOrganizationsInstallation() {
+        UUID other = UUID.randomUUID();
+        when(store.installation(other, id)).thenReturn(Optional.empty());
+        assertEquals(GitException.Kind.NOT_FOUND,
+                assertThrows(GitException.class, () -> service.searchRepositories(other, id, "repo", 0, 10)).getKind());
+        verify(store, never()).searchRepositories(any(), any(), anyString(), anyInt(), anyInt());
+        verifyNoInteractions(provider);
+    }
+    @Test void repositorySearchValidatesBoundsAndBlankSearchPreservesListing() {
+        assertThrows(GitException.class, () -> service.searchRepositories(org, id, "x".repeat(201), 0, 10));
+        assertThrows(GitException.class, () -> service.searchRepositories(org, id, "repo", -1, 10));
+        assertThrows(GitException.class, () -> service.searchRepositories(org, id, "repo", 0, 101));
+        verifyNoInteractions(store, provider);
+        when(store.installation(org, id)).thenReturn(Optional.of(installation));
+        when(store.repositories(org, id, 0, 10)).thenReturn(List.of());
+        assertTrue(service.searchRepositories(org, id, "  ", 0, 10).isEmpty());
+        verify(store).repositories(org, id, 0, 10);
+    }
+
     @Test void connectionUsesRandomStateHashAndPkceWithTenMinuteExpiry() {
         when(provider.authorizationUrl(anyString(), anyString())).thenReturn("https://github.com/authorize");
         var result = service.startConnection(org, "123");
@@ -89,5 +115,43 @@ class GitServiceTest {
         assertThrows(GitException.class, () -> service.installations(org, 0, 101));
         assertThrows(GitException.class, () -> service.installations(org, Integer.MAX_VALUE, 100));
         verifyNoInteractions(store);
+    }
+    @Test void commitsUseOnlyTheAuthenticatedOrganizationsRepositoryAndInstallation() {
+        UUID repositoryId = UUID.randomUUID();
+        when(store.repository(org, repositoryId)).thenReturn(Optional.of(repository(repositoryId, true)));
+        when(store.installation(org, id)).thenReturn(Optional.of(installation));
+        var commits = List.of(new com.shipora.git.application.dto.CommitResult("a".repeat(40), "Fix health check", "Author", now));
+        when(provider.commits("123", "456", "owner/repo", "feature/health", 1, 20)).thenReturn(commits);
+        assertEquals(commits, service.commits(org, repositoryId, "feature/health", 1, 20));
+        verify(provider).commits("123", "456", "owner/repo", "feature/health", 1, 20);
+    }
+    @Test void otherOrganizationsCommitHistoryNeverCallsGithub() {
+        UUID repositoryId = UUID.randomUUID();
+        when(store.repository(org, repositoryId)).thenReturn(Optional.empty());
+        assertEquals(GitException.Kind.NOT_FOUND, assertThrows(GitException.class,
+                () -> service.commits(org, repositoryId, "main", 0, 20)).getKind());
+        verifyNoInteractions(provider);
+    }
+    @Test void unavailableRepositoriesAndInactiveInstallationsCannotListCommits() {
+        UUID repositoryId = UUID.randomUUID();
+        when(store.repository(org, repositoryId)).thenReturn(Optional.of(repository(repositoryId, false)));
+        when(store.installation(org, id)).thenReturn(Optional.of(installation));
+        assertEquals(GitException.Kind.CONFLICT, assertThrows(GitException.class,
+                () -> service.commits(org, repositoryId, "main", 0, 20)).getKind());
+        when(store.repository(org, repositoryId)).thenReturn(Optional.of(repository(repositoryId, true)));
+        when(store.installation(org, id)).thenReturn(Optional.of(new GitInstallation(id, org, "123", "owner", false, 1, now)));
+        assertThrows(GitException.class, () -> service.commits(org, repositoryId, "main", 0, 20));
+        verifyNoInteractions(provider);
+    }
+    @Test void invalidCommitQueriesAreRejectedBeforeAccessingStoreOrProvider() {
+        for (String branch : List.of("", "../main", "feature//test", "main&other=1", "main/"))
+            assertThrows(GitException.class, () -> service.commits(org, id, branch, 0, 20));
+        assertThrows(GitException.class, () -> service.commits(org, id, "main", -1, 20));
+        assertThrows(GitException.class, () -> service.commits(org, id, "main", 1001, 20));
+        assertThrows(GitException.class, () -> service.commits(org, id, "main", 0, 101));
+        verifyNoInteractions(store, provider);
+    }
+    private GitRepository repository(UUID repositoryId, boolean available) {
+        return new GitRepository(repositoryId, id, "456", "owner/repo", "https://github.com/owner/repo.git", "main", true, available, now);
     }
 }

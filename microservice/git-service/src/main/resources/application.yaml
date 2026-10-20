@@ -40,3 +40,8 @@ shipora:
     callback-url: ${GITHUB_CALLBACK_URL:http://localhost:8084/api/git/github/callback}
     webhook-secret: ${GITHUB_WEBHOOK_SECRET:}
     api-version: "2026-03-10"
+
+---
+shipora:
+  pipeline:
+    automatic-push-enabled: ${SHIPORA_AUTO_DEPLOY_ENABLED:false}

@@ -11,6 +11,7 @@ public interface GitStore {
     Optional<GitInstallation> installation(UUID organizationId, UUID id);
     List<GitInstallation> installations(UUID organizationId, int offset, int limit);
     List<GitRepository> repositories(UUID organizationId, UUID installationId, int offset, int limit);
+    List<GitRepository> searchRepositories(UUID organizationId, UUID installationId, String query, int offset, int limit);
     Optional<GitRepository> repository(UUID organizationId, UUID id);
     void replaceRepositories(GitInstallation installation, List<GitProvider.RepositorySnapshot> repositories, Instant now);
     boolean recordWebhook(WebhookDelivery delivery, Instant now);
@@ -22,5 +23,9 @@ public interface GitStore {
     }
     record WebhookDelivery(String deliveryId, String eventType, String installationExternalId,
                            String repositoryExternalId, String commitSha, boolean invalidateInstallation,
-                           boolean invalidateRepositories) {}
+                           boolean invalidateRepositories,String branch) {
+        public WebhookDelivery(String deliveryId,String eventType,String installationExternalId,String repositoryExternalId,String commitSha,boolean invalidateInstallation,boolean invalidateRepositories){
+            this(deliveryId,eventType,installationExternalId,repositoryExternalId,commitSha,invalidateInstallation,invalidateRepositories,null);
+        }
+    }
 }

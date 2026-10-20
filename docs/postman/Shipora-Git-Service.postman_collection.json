@@ -341,7 +341,7 @@
         "method": "GET",
         "header": [],
         "url": "{{baseUrl}}/api/git/installations/{{installationId}}/repositories?page=0&size=20",
-        "description": ""
+        "description": "List synchronized repositories. Add optional &q=storefront to search full names with a case-insensitive literal substring (maximum 200 characters). Filtering occurs before pagination and remains scoped to the authenticated organization and installation."
       },
       "event": [
         {
@@ -371,6 +371,27 @@
             "type": "text/javascript",
             "exec": [
               "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6a. List repository commits",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/git/repositories/{{repositoryId}}/commits?branch=main&page=0&size=20",
+        "description": "Replace main with the application's branch (URL encode it). Requires Contents read access to this connected repository. Returns full SHA, message, authorName and committedAt; never a GitHub token. Select a returned SHA when creating a deployment."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Commit array without credentials\", () => { const commits = pm.response.json(); pm.expect(commits).to.be.an('array'); commits.forEach(c => { pm.expect(c.sha).to.match(/^[0-9a-f]{40}([0-9a-f]{24})?$/); pm.expect(c).not.to.have.property('token'); }); });"
             ]
           }
         }
